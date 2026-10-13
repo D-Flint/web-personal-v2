@@ -1,20 +1,20 @@
 ---
 import { wirePath } from '../utils/draftingGeometry';
 const { variant = 'agent' } = Astro.props;
-type Node = { id:string; x:number; y:number; dx:number; dy:number; kind:string; label:string; w?:number; h?:number };
+type Node = { id:string; x:number; y:number; dx:number; dy:number; kind:string; label:string; detail?:string[]; w?:number; h?:number };
 type Edge = { from:string; to:string; fx:number; fy:number; tx:number; ty:number; axis?:string };
 const configurations:Record<string,{label:string;stack:string;nodes:Node[];edges:Edge[];steps:string[]}> = {
-  agent:{label:'Assistant architecture',stack:'Docker / Python',steps:['Request input','Prompt guard','Docker sandbox','Task scheduler','Status dashboard'],nodes:[
-    {id:'input',x:40,y:150,dx:-5,dy:-22,kind:'input',label:'Input'},
-    {id:'guard',x:150,y:150,dx:-18,dy:12,kind:'guard',label:'Prompt guard',w:76,h:76},
-    {id:'sandbox',x:280,y:150,dx:0,dy:-22,kind:'sandbox',label:'Docker sandbox',w:76,h:76},
-    {id:'dashboard',x:440,y:125,dx:18,dy:-25,kind:'dashboard',label:'Status dashboard',w:76,h:52},
-    {id:'scheduler',x:440,y:255,dx:18,dy:18,kind:'scheduler',label:'Task scheduler',w:76,h:52},
-  ],edges:[{from:'input',to:'guard',fx:7,fy:0,tx:-38,ty:0},{from:'guard',to:'sandbox',fx:38,fy:0,tx:-38,ty:0},{from:'sandbox',to:'dashboard',fx:38,fy:0,tx:-38,ty:0},{from:'sandbox',to:'scheduler',fx:38,fy:0,tx:-38,ty:0}]},
+  agent:{label:'Assistant architecture',stack:'Docker / Python',steps:['User request · task intent','Prompt guard · screen input and tool output','Docker sandbox · isolated task execution','Status dashboard · live agent state'],nodes:[
+    {id:'input',x:48,y:142,dx:-5,dy:-18,kind:'input',label:'User request',detail:['Task intent'],w:106,h:60},
+    {id:'guard',x:190,y:142,dx:-12,dy:10,kind:'guard',label:'Prompt guard',detail:['Screen input + tool output','Enforce user-authorized tools'],w:132,h:94},
+    {id:'sandbox',x:390,y:142,dx:0,dy:-18,kind:'sandbox',label:'Docker sandbox',detail:['Isolated task execution'],w:138,h:96},
+    {id:'dashboard',x:600,y:142,dx:12,dy:-18,kind:'dashboard',label:'Status dashboard',detail:['Live agent status'],w:134,h:82},
+    {id:'scheduler',x:190,y:306,dx:-12,dy:16,kind:'scheduler',label:'Task scheduler',detail:['24/7 scheduled work'],w:142,h:70},
+  ],edges:[{from:'input',to:'guard',fx:7,fy:0,tx:-66,ty:0},{from:'guard',to:'sandbox',fx:66,fy:0,tx:-69,ty:0},{from:'sandbox',to:'dashboard',fx:69,fy:0,tx:-67,ty:0},{from:'scheduler',to:'sandbox',fx:71,fy:0,tx:0,ty:48,axis:'x'}]},
   web:{label:'Portfolio architecture',stack:'Astro / TypeScript',steps:['Astro pages','Browser interactions','Server-side chat API'],nodes:[
-    {id:'browser',x:180,y:150,dx:-8,dy:-13,kind:'browser',label:'Browser',w:280,h:220},
-    {id:'project',x:111,y:169,dx:-22,dy:10,kind:'preview',label:'Project view',w:104,h:74},
-    {id:'assistant',x:244,y:169,dx:6,dy:7,kind:'preview-chat',label:'Assistant view',w:104,h:74},
+    {id:'browser',x:180,y:150,dx:-8,dy:-13,kind:'browser',label:'Browser',w:280,h:240},
+    {id:'project',x:111,y:169,dx:-22,dy:0,kind:'preview',label:'Project view',w:104,h:74},
+    {id:'assistant',x:244,y:169,dx:6,dy:0,kind:'preview-chat',label:'Assistant view',w:104,h:74},
     {id:'pages',x:441,y:75,dx:10,dy:-22,kind:'box',label:'Astro pages',w:104,h:36},
     {id:'interaction',x:441,y:150,dx:14,dy:0,kind:'box',label:'Interactions',w:104,h:36},
     {id:'api',x:441,y:225,dx:10,dy:22,kind:'box',label:'Chat API',w:104,h:36},
@@ -31,21 +31,21 @@ const c = configurations[variant] || configurations.agent;
 function edgePath(edge:Edge){const from=c.nodes.find(n=>n.id===edge.from)!;const to=c.nodes.find(n=>n.id===edge.to)!;return wirePath({x:from.x+edge.fx,y:from.y+edge.fy},{x:to.x+edge.tx,y:to.y+edge.ty},edge.axis);}
 ---
 <figure class="figure" data-diagram data-nodes={JSON.stringify(c.nodes)} data-edges={JSON.stringify(c.edges)}><div class="diagram-board"><div class="diagram-label"><span>{c.label}</span><span class="technical">{c.stack}</span></div>
-<svg class="desktop-schematic" viewBox="0 0 520 330" role="img" aria-label={`${c.label}: ${c.steps.join(', ')}. Scroll opens the component layout while keeping its connections attached.`}>
+<svg class="desktop-schematic" viewBox={variant==='agent'?'0 0 690 390':'0 0 520 330'} role="img" aria-label={`${c.label}: ${c.steps.join('; ')}${variant==='agent'?'. Scheduled work enters the same isolated sandbox':''}. Scroll opens the component layout while keeping its connections attached.`}>
 <g fill="none" stroke="currentColor" stroke-width="1.15">{c.edges.map((edge,i)=><path data-wire={i} d={edgePath(edge)}/>)}</g>
 {c.nodes.map(node=><g data-node={node.id} transform={`translate(${node.x} ${node.y})`}>
 <g fill="none" stroke="currentColor" stroke-width="1.15">
 {node.kind==='input'?<circle r="7"/>:node.kind==='database'?<><ellipse cy="-12" rx="40" ry="12"/><path d="M-40-12v30c0 16 80 16 80 0v-30M-40 2c0 16 80 16 80 0"/></>:<rect x={-(node.w||76)/2} y={-(node.h||76)/2} width={node.w||76} height={node.h||76} rx="2"/>}
-{node.kind==='guard'&&<path d="m-15-8-8 8 8 8m30-16 8 8-8 8"/>}
-{node.kind==='sandbox'&&<><rect x="-20" y="-20" width="40" height="40"/><path d="M-11-28v8M0-28v8m11-8v8M-11-7h7m8 0h7m-22 9h22m-22 9h13"/><rect x="-66" y="-63" width="132" height="126" stroke-dasharray="4 5" stroke-opacity=".55"/></>}
-{node.kind==='dashboard'&&<path d="M-24 11v-13h10v13zm19 0V-10H5v21zm19 0v-29h10v29z"/>}
-{(node.kind==='scheduler'||node.kind==='worker')&&<path d="m-21-10 11 10-11 10m22 0h21"/>}
+{node.kind==='guard'&&<path d={node.detail?'m-15-26-8 8 8 8m30-16 8 8-8 8':'m-15-8-8 8 8 8m30-16 8 8-8 8'}/>}
+{node.kind==='sandbox'&&<><rect x={node.detail?'-18':'-20'} y={node.detail?'-39':'-20'} width={node.detail?'36':'40'} height={node.detail?'30':'40'}/><path d={node.detail?'M-9-47v8M0-47v8M9-47v8M-10-29h6m4 0h10m-20 8h20m-20 8h13':'M-11-28v8M0-28v8m11-8v8M-11-7h7m8 0h7m-22 9h22m-22 9h13'}/><rect x="-96" y="-88" width="192" height="176" stroke-dasharray="4 5" stroke-opacity=".55"/></>}
+{node.kind==='dashboard'&&<path d={node.detail?'M-24 5V-8h10V5zm19 0V-18H5V5zm19 0v-28h10V5z':'M-24 11v-13h10v13zm19 0V-10H5v21zm19 0v-29h10v29z'}/>}
+{(node.kind==='scheduler'||node.kind==='worker')&&<path d={node.detail?'m-21-21 11 10-11 10m22 0h21':'m-21-10 11 10-11 10m22 0h21'}/>}
 {node.kind==='browser'&&<path d="M-140-82h280M-122-96h5m6 0h5m6 0h5M-120-55H10m-130 12h90M-120 90h240"/>}
 {node.kind==='preview'&&<path d="m-39 22 22-21 20 9 24-25 16 15"/>}
 {node.kind==='preview-chat'&&<path d="M-38-17h76m-76 13h53m-53 13h62m-62 13h38"/>}
 {node.kind==='audit'&&<path d="M-27-11h54m-54 11h39m-39 11h47"/>}
 </g>
-<text text-anchor="middle" y={node.kind==='box'?4:node.kind==='input'?30:(node.h||48)/2+23} fill="currentColor" font-family="Inter,sans-serif" font-size="11">{node.label}</text>
+{node.detail?<><text text-anchor="middle" y={node.kind==='sandbox'?14:node.kind==='input'?23:node.kind==='scheduler'?8:node.kind==='dashboard'?20:7} fill="currentColor" font-family="Inter,sans-serif" font-size="11" font-weight="600">{node.label}</text>{node.detail.map((line,i)=><text text-anchor="middle" y={(node.kind==='sandbox'?30:node.kind==='scheduler'?24:node.kind==='input'?39:node.kind==='dashboard'?36:24)+i*14} fill="currentColor" font-family="Inter,sans-serif" font-size="8.5">{line}</text>)}</>:<text text-anchor="middle" y={node.kind==='box'?4:node.kind==='input'?30:(node.h||48)/2+((node.kind==='preview'||node.kind==='preview-chat')?41:23)} fill="currentColor" font-family="Inter,sans-serif" font-size="11">{node.label}</text>}
 </g>)}
 </svg>
-<ol class="mobile-schematic" aria-label={c.label}>{c.steps.map((step,i)=><li data-mobile-part={i}><span class="schematic-node"><span class="node-dot" aria-hidden="true"></span>{step}</span>{i<c.steps.length-1&&<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 4v16m-5-5 5 5 5-5"/></svg>}</li>)}</ol></div><figcaption><span>Architecture study · schematic, not a screenshot</span><span class="technical diagram-view">Scroll to inspect</span></figcaption></figure>
+<ol class="mobile-schematic" aria-label={c.label}>{c.steps.map((step,i)=><li data-mobile-part={i}><span class="schematic-node"><span class="node-dot" aria-hidden="true"></span>{step}</span>{i<c.steps.length-1&&<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 4v16m-5-5 5 5 5-5"/></svg>}</li>)}</ol>{variant==='agent'&&<p class="mobile-scheduled">Task scheduler · 24/7 scheduled work <span aria-hidden="true">↗</span> Docker sandbox</p>}</div><figcaption><span>Architecture study · schematic, not a screenshot</span><span class="technical diagram-view">Scroll to inspect</span></figcaption></figure>
