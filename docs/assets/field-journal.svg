@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
+  <title id="title">Hoeurb Vuthi — Engineering Field Journal</title>
+  <desc id="desc">Warm paper, ink typography and a cobalt circuit drawing. Signals travel along the drawing as the journal opens.</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#244dc8" stroke-opacity=".07"/></pattern>
+    <style>
+      .ink{fill:#202c33}.muted{fill:#53616a}.blue{fill:#244dc8}
+      .serif{font-family:Georgia,'Times New Roman',serif}.sans{font-family:Arial,Helvetica,sans-serif}
+      .wire{fill:none;stroke:#244dc8;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .signal{fill:none;stroke:#244dc8;stroke-width:4;stroke-linecap:round;stroke-dasharray:14 510;animation:flow 4s ease-in-out 2}
+      .orbit{transform-origin:950px 204px;animation:turn 8s ease-in-out 1}
+      @keyframes flow{from{stroke-dashoffset:524}to{stroke-dashoffset:0}}
+      @keyframes turn{0%{transform:rotate(-24deg)}100%{transform:rotate(0deg)}}
+      @media(prefers-reduced-motion:reduce){.signal,.orbit{animation:none}.signal{display:none}}
+    </style>
+  </defs>
+  <rect width="1200" height="460" rx="4" fill="#f4f1e9"/>
+  <rect x="748" y="48" width="404" height="344" fill="url(#grid)"/>
+  <path d="M48 70H1152M48 392H1152" stroke="#c7cbc5"/>
+  <text x="48" y="49" class="sans muted" font-size="14" letter-spacing="1">Hoeurb Vuthi</text>
+  <text x="1152" y="49" text-anchor="end" class="sans muted" font-size="14">Portfolio / Engineering notes</text>
+  <text x="48" y="157" class="serif ink" font-size="66" letter-spacing="-2">Engineering</text>
+  <text x="48" y="233" class="serif ink" font-size="66" letter-spacing="-2">Field Journal.</text>
+  <path d="M50 261H116" stroke="#244dc8" stroke-width="3"/>
+  <text x="48" y="309" class="sans muted" font-size="19">Systems, experiments, and the thinking behind them.</text>
+  <text x="48" y="341" class="sans muted" font-size="19">Built with care. Documented along the way.</text>
+  <g class="wire">
+    <path d="M780 166H834V204H905M995 204H1074V278H1110M950 249V318H850V278H790" opacity=".35"/>
+    <rect x="905" y="159" width="90" height="90" rx="3"/>
+    <path d="M921 150V159M940 150V159M959 150V159M978 150V159M921 249V258M940 249V258M959 249V258M978 249V258M896 176H905M896 195H905M896 214H905M896 233H905M995 176H1004M995 195H1004M995 214H1004M995 233H1004"/>
+    <g class="orbit"><circle cx="950" cy="204" r="26"/><path d="M950 169V180M950 228V239M915 204H926M974 204H985M932 186L940 194M960 214L968 222"/></g>
+    <circle cx="780" cy="166" r="5" fill="#f4f1e9"/><circle cx="1110" cy="278" r="5" fill="#f4f1e9"/><circle cx="790" cy="278" r="5" fill="#f4f1e9"/>
+  </g>
+  <path class="signal" d="M780 166H834V204H905M995 204H1074V278H1110"/>
+  <text x="950" y="358" text-anchor="middle" class="sans blue" font-size="13" letter-spacing="1">Observe. Build. Refine.</text>
+  <text x="48" y="425" class="sans muted" font-size="13">Paper / Ink / Cobalt</text>
+  <text x="1152" y="425" text-anchor="end" class="sans blue" font-size="13">An open workbench for ideas.</text>
+</svg>

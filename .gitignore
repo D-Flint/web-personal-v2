@@ -13,9 +13,9 @@ yarn-error.log*
 pnpm-debug.log*
 
 
-# environment variables
-.env
-.env.production
+# private environment files (keep the safe template versioned)
+.env*
+!.env.example
 
 # macOS-specific files
 .DS_Store
@@ -41,7 +41,6 @@ mobile-lighthouse.log
 lighthouse-local.log
 preview.log
 http.log
-.env*
 # local agent installations and machine-specific permissions
 /.agents/
 /.codex/
@@ -72,9 +71,8 @@ Desktop.ini
 *.swo
 ~$*
 
-# Adobe Aillistraitor
+# Adobe Illustrator
 /AI/
 
 # emergent
 .emergent/
-!.env.example
