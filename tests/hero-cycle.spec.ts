@@ -46,10 +46,10 @@ test('large PROBE retains every sampled grid cell without cap holes',async({page
   await page.setViewportSize({width:2048,height:1139});await page.clock.install();
   await page.addInitScript(()=>{
     const state=(window as any).__heroInk={masks:[],points:[]};const proto=CanvasRenderingContext2D.prototype;
-    const read=proto.getImageData,clear=proto.clearRect,fill=proto.fillRect;
+    const read=proto.getImageData,clear=proto.clearRect,arc=proto.arc;
     proto.getImageData=function(...args:any[]){const result=read.apply(this,args as any);if(!this.canvas.id)state.masks.push({data:Array.from(result.data),width:result.width,height:result.height});return result;};
     proto.clearRect=function(...args:any[]){if(this.canvas.id==='hero-particles')state.points=[];return clear.apply(this,args as any);};
-    proto.fillRect=function(x,y,w,h){if(this.canvas.id==='hero-particles')state.points.push({x:x+w/2,y:y+h/2,size:w});return fill.call(this,x,y,w,h);};
+    proto.arc=function(...args:Parameters<CanvasRenderingContext2D['arc']>){const [x,y,radius]=args;if(this.canvas.id==='hero-particles')state.points.push({x,y,size:radius*2});return arc.apply(this,args);};
   });
   await page.goto('/');const canvas=page.locator('#hero-particles');await expect(canvas).toHaveAttribute('data-ready','true');
   await page.clock.runFor(3100);
