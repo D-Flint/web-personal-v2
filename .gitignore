@@ -44,7 +44,7 @@ http.log
 # local agent installations and machine-specific permissions
 /.agents/
 /.codex/
-/.claude/settings.local.json
+/.claude/
 /.impeccable/
 
 # generated deliverables, scratch work, and audit reports
@@ -55,8 +55,8 @@ http.log
 /test-results/
 /coverage/
 
-# Obsidian local state and installed plugins (may contain API credentials)
-agents-memory/.obsidian/
+# local agent memory (including Obsidian state and plugins)
+/agents-memory/
 
 # Python bytecode and local environments
 __pycache__/
@@ -76,3 +76,27 @@ Desktop.ini
 
 # emergent
 .emergent/
+
+# local agent instructions, specifications, memory, and session records
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+/PRODUCT.md
+/DESIGN.md
+/SURFACE.md
+/VERIFICATION.md
+/FILE-MAP.md
+/spec.md
+/log.md
+/docs/**/*.md
+
+# agent workflows, local tool configuration, and source audit snapshot
+/.aws/
+/.gemini/
+/.cursor/
+/.clinerules
+/.clinerules/
+/.cursorrules
+/opencode.json
+/docs/superpowers/
+/source-snapshot.json
