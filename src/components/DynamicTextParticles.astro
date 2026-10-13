@@ -32,6 +32,7 @@ if(ctx){
   }
   box.dataset.word=words[word];box.dataset.points=String(particles.length);
  }
+ document.addEventListener('theme-change',()=>{if(ready)draw();});
  function home(){particles.forEach(p=>{p.x=p.baseX;p.y=p.baseY;p.vx=p.vy=0;});draw();}
  function assign(){
   const coords=targets[word]||[];

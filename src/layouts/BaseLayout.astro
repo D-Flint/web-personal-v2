@@ -13,6 +13,40 @@ const { title = 'Hoeurb Vuthi — Engineering Field Journal', description = 'Eng
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>{title}</title><meta name="description" content={description}/><meta name="theme-color" content="#f4f1e9"/>
+<script is:inline>
+(() => {
+  const root = document.documentElement;
+  const system = matchMedia('(prefers-color-scheme: dark)');
+  let preference = null;
+  try {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'light' || saved === 'dark') preference = saved;
+  } catch {}
+  function apply() {
+    const dark = preference ? preference === 'dark' : system.matches;
+    root.classList.toggle('dark', dark);
+    document.querySelector('meta[name="theme-color"]').content = dark ? '#080808' : '#f4f1e9';
+    const toggle = document.querySelector('#theme-toggle');
+    if (toggle) {
+      toggle.setAttribute('aria-checked', String(dark));
+      toggle.querySelector('[data-theme-label]').textContent = dark ? 'Dark' : 'Light';
+    }
+    document.dispatchEvent(new CustomEvent('theme-change'));
+  }
+  apply();
+  system.addEventListener('change', () => { if (!preference) apply(); });
+  document.addEventListener('DOMContentLoaded', () => {
+    const controls = document.querySelector('.theme-controls');
+    controls.hidden = false;
+    document.querySelector('#theme-toggle').addEventListener('click', () => {
+      preference = root.classList.contains('dark') ? 'light' : 'dark';
+      try { localStorage.setItem('theme', preference); } catch {}
+      apply();
+    });
+    apply();
+  });
+})();
+</script>
 <link rel="icon" href="/journal-icon.svg" type="image/svg+xml"/>
 <link rel="preload" href="/fonts/journal-serif.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
 <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>

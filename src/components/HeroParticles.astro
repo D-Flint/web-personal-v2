@@ -27,10 +27,11 @@ if(ctx){
   const clamp=(v:number,max:number)=>Math.max(particleSize/2,Math.min(max-particleSize/2,v));
   const random=()=>({x:particleSize/2+Math.random()*(width-particleSize),y:particleSize/2+Math.random()*(height-particleSize)});
   function draw(){
-    ctx!.clearRect(0,0,width,height);ctx!.fillStyle='#244dc8';
+    ctx!.clearRect(0,0,width,height);ctx!.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     for(const p of points)ctx!.fillRect(p.x-particleSize/2,p.y-particleSize/2,particleSize,particleSize);
     canvas.dataset.word=words[word];canvas.dataset.phase=phase;
   }
+  document.addEventListener('theme-change',()=>{if(ready)draw();});
   function begin(index:number,scatter=false){
     next=index;elapsed=0;hold=0;phase=scatter?'scatter':'assemble';
     if(!scatter)word=index;
