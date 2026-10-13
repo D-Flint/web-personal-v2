@@ -247,8 +247,7 @@ test('hero particle wordmark disperses, reforms and respects reduced motion', as
   await expect(canvas).toHaveAttribute('data-ready','true');
   expect(Number(await canvas.getAttribute('data-points'))).toBeGreaterThan(200);
   const before=await canvas.evaluate(el=>el.toDataURL());
-  await page.getByRole('button',{name:'Scatter the particles'}).focus();
-  await page.keyboard.press('Enter');
+  await canvas.click();
   await expect.poll(()=>canvas.evaluate(el=>el.toDataURL())).not.toBe(before);
   await expect(canvas).toHaveAttribute('data-phase','hold',{timeout:8000});
   await page.emulateMedia({reducedMotion:'reduce'});

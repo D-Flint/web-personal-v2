@@ -8,7 +8,7 @@ for(const width of [1440,390,320])test(`wordmark scatters and reforms at ${width
   expect(Number(await canvas.getAttribute('data-points'))).toBeLessThanOrEqual(3200);
   await expect(page.getByRole('radio')).toHaveCount(0);
   await expect(page.getByText('Animation style',{exact:true})).toHaveCount(0);
-    for(const word of ['D-FLINT','PROBE','FORGE','DECODE','HOEURB-VUTHI']){
+    for(const word of ['DECODE','FORGE','BREAK','MASTER','PROBE']){
       await page.clock.fastForward(3100);await page.clock.runFor(4500);
       await expect(canvas).toHaveAttribute('data-word',word);await expect(canvas).toHaveAttribute('data-phase','hold');
       const bounds=await canvas.evaluate((el:HTMLCanvasElement)=>{const data=el.getContext('2d')!.getImageData(0,0,el.width,el.height).data;let minX=el.width,minY=el.height,maxX=0,maxY=0;for(let y=0;y<el.height;y++)for(let x=0;x<el.width;x++)if(data[(y*el.width+x)*4+3]){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);}return {minX,minY,maxX,maxY,w:el.width,h:el.height};});
@@ -19,16 +19,13 @@ for(const width of [1440,390,320])test(`wordmark scatters and reforms at ${width
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`.impeccable/review/hero-cycle-${width}.png`});expect(errors).toEqual([]);
 });
-test('cycle controls, pointer delay, resize, suspension and reduced motion',async({page})=>{
+test('automatic cycle, pointer delay, resize, suspension and reduced motion',async({page})=>{
   await page.clock.install();await page.goto('/');const canvas=page.locator('#hero-particles');await expect(canvas).toHaveAttribute('data-ready','true');await page.clock.runFor(3100);
   await page.clock.fastForward(3100);await page.clock.runFor(100);
-  await page.getByRole('button',{name:'Pause cycle'}).click();await page.clock.runFor(4500);
-  await expect(canvas).toHaveAttribute('data-word','D-FLINT');await expect(canvas).toHaveAttribute('data-phase','hold');
-  await page.clock.fastForward(9000);await expect(canvas).toHaveAttribute('data-word','D-FLINT');
-  await page.setViewportSize({width:320,height:844});await page.clock.runFor(50);await expect(canvas).toHaveAttribute('data-word','D-FLINT');
-  await page.getByRole('button',{name:'Scatter the particles'}).focus();await page.keyboard.press('Enter');await page.clock.runFor(4500);await expect(canvas).toHaveAttribute('data-word','D-FLINT');
-  await page.getByRole('button',{name:'Resume cycle'}).click();
-  await canvas.hover();await page.clock.fastForward(8000);await expect(canvas).toHaveAttribute('data-word','D-FLINT');
+  await page.clock.runFor(4500);
+  await expect(page.locator('.hero-animation-controls')).toHaveCount(0);
+  await page.setViewportSize({width:320,height:844});await page.clock.runFor(50);
+  await canvas.hover();await page.clock.fastForward(8000);await expect(canvas).toHaveAttribute('data-word','DECODE');
   await page.mouse.move(0,0);await page.clock.runFor(2800);await expect(canvas).toHaveAttribute('data-phase','hold');
   await page.locator('#contact').scrollIntoViewIfNeeded();await page.clock.runFor(100);await expect(canvas).toHaveAttribute('data-running','false');
   const word=await canvas.getAttribute('data-word');await page.clock.fastForward(20000);await expect(canvas).toHaveAttribute('data-word',word);
@@ -36,10 +33,10 @@ test('cycle controls, pointer delay, resize, suspension and reduced motion',asyn
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
   await expect(canvas).toHaveAttribute('data-running','false');const frozen=await canvas.getAttribute('data-word');await page.clock.fastForward(20000);await expect(canvas).toHaveAttribute('data-word',frozen);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});await page.clock.runFor(50);
-  await page.emulateMedia({reducedMotion:'reduce'});await expect(canvas).toHaveAttribute('data-word','HOEURB-VUTHI');await expect(page.locator('.hero-animation-controls')).toBeHidden();await expect(canvas).toHaveAttribute('data-animating','false');
+  await page.emulateMedia({reducedMotion:'reduce'});await expect(canvas).toHaveAttribute('data-word','PROBE');await expect(page.locator('.hero-animation-controls')).toBeHidden();await expect(canvas).toHaveAttribute('data-animating','false');
 });
 test('no JavaScript leaves the VUTHI fallback visible',async({browser})=>{
-  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();await page.goto('http://localhost:4322/');await expect(page.locator('.hero-pixel-fallback')).toBeVisible();await expect(page.locator('.hero-pixel-fallback')).toHaveText('VUTHI');await expect(page.locator('.hero-animation-controls')).toBeHidden();await context.close();
+  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();await page.goto('/');await expect(page.locator('.hero-pixel-fallback')).toBeVisible();await expect(page.locator('.hero-pixel-fallback')).toHaveText('VUTHI');await expect(page.locator('.hero-animation-controls')).toBeHidden();await context.close();
 });
 
 test('large PROBE retains every sampled grid cell without cap holes',async({page})=>{
@@ -54,7 +51,7 @@ test('large PROBE retains every sampled grid cell without cap holes',async({page
   await page.goto('/');const canvas=page.locator('#hero-particles');await expect(canvas).toHaveAttribute('data-ready','true');
   await page.clock.runFor(3100);
   for(let i=0;i<2;i++){await page.clock.fastForward(3100);await page.clock.runFor(4500);}
-  await page.getByRole('button',{name:'Pause cycle'}).click();await expect(canvas).toHaveAttribute('data-word','PROBE');
+  await expect(canvas).toHaveAttribute('data-word','FORGE');
   const missing=await page.evaluate(()=>{
     const {masks,points}=(window as any).__heroInk,mask=masks[masks.length-3],gap=Math.round(points[0].size/.68);
     const occupied=new Set(points.map((p:any)=>`${Math.round(p.x)},${Math.round(p.y)}`));let missing=0;

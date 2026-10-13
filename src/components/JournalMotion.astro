@@ -9,10 +9,6 @@ import DynamicTextParticles from './DynamicTextParticles.astro';
         <h1><span>Work,</span><br/><em class="motion-documented">documented.</em></h1>
         <div class="motion-dynamic"><DynamicTextParticles/></div>
       </div>
-      <div class="motion-actions" hidden>
-        <button type="button" data-motion-replay>Scatter &amp; reassemble</button>
-        <button type="button" data-motion-pause aria-pressed="false">Pause</button>
-      </div>
     </div>
     <div>
       <p>From a first C++ program to systems that work in the background. A growing journal of applications, tools, and technical studies.</p>
@@ -26,10 +22,4 @@ import DynamicTextParticles from './DynamicTextParticles.astro';
 .motion-lettering h1{margin:0}
 .motion-dynamic{position:absolute;inset:0}
 .journal-motion:has(:global(.dynamic-particles[data-ready=true])) .motion-documented{color:transparent}
-.motion-actions{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:16px}
-.motion-actions[hidden]{display:none}
-.motion-actions button{min-height:44px;padding:6px 0;border:0;background:transparent;color:var(--blue);font-size:.72rem}
-.motion-actions button:hover{text-decoration:underline;text-underline-offset:5px}
-.motion-actions button:disabled{cursor:default;opacity:.5}
-@media(max-width:700px){.motion-actions{margin-top:12px}.motion-actions button{font-size:.7rem}}
 </style>
