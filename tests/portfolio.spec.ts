@@ -97,9 +97,8 @@ test('contact network and truthful false-success handling', async ({ page }) => 
   await expect(page.locator('#contact-message')).toHaveValue('More than ten characters.');
 });
 
-test('chat configuration error, retry, decoded streaming contract and reset', async ({ page, request }) => {
-  const actual = await request.post('/api/chat', { data: { messages: [{ role: 'user', content: 'Hello' }] } });
-  expect(actual.status()).toBe(503);
+test('chat configuration error, retry, decoded streaming contract and reset', async ({ page }) => {
+  await page.route('**/api/chat', route => route.fulfill({ status: 503, json: { error: 'Chat service not configured — missing API key.' } }));
   await page.goto('/');
   await page.locator('#assistant-open').click();
   await expect(page.locator('#chat-input')).toBeFocused();
@@ -258,4 +257,42 @@ test('hero particle wordmark disperses, reforms and respects reduced motion', as
   await page.emulateMedia({reducedMotion:'no-preference'});
   await page.locator('#contact').scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-running','false');
+});
+
+
+test('assistant keeps page scrolling available in both themes and viewport sizes', async ({ browser }) => {
+  for (const width of [1440, 390]) {
+    for (const theme of ['light', 'dark']) {
+      const context = await browser.newContext({ viewport: {width, height: width === 390 ? 844 : 900}, reducedMotion: 'reduce' });
+      const page = await context.newPage();
+      const errors: string[] = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.addInitScript(theme => localStorage.setItem('theme', theme), theme);
+      await page.goto('/');
+      await page.locator('#assistant-open').click();
+      await expect(page.locator('#chat-input')).toBeFocused();
+      expect(await page.locator('#neko-chat').evaluate(el => el.matches(':modal'))).toBe(false);
+      await page.mouse.move(4, 150);
+      await page.mouse.wheel(0, 450);
+      await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(100);
+      await expect(page.locator('#neko-chat')).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.route('**/api/chat', route => route.fulfill({ contentType: 'text/event-stream', body: 'A project note.\n'.repeat(80) }));
+      await page.locator('#chat-input').fill('Tell me about your projects.');
+      await page.locator('#chat-send').click();
+      await expect(page.locator('#chat-status')).toHaveText('Response complete.');
+      const pageScroll = await page.evaluate(() => scrollY);
+      const chatScroll = await page.locator('#chat-log').evaluate(el => el.scrollTop);
+      await page.locator('#chat-log').hover();
+      await page.mouse.wheel(0, -150);
+      await expect.poll(() => page.locator('#chat-log').evaluate(el => el.scrollTop)).toBeLessThan(chatScroll);
+      expect(await page.evaluate(() => scrollY)).toBe(pageScroll);
+      await page.screenshot({path: `/tmp/chat-scroll-${width}-${theme}.png`});
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#neko-chat')).not.toBeVisible();
+      await expect(page.locator('#assistant-open')).toBeFocused();
+      expect(errors).toEqual([]);
+      await context.close();
+    }
+  }
 });

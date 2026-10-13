@@ -8,7 +8,7 @@ for(const width of [1440,390,320])test(`wordmark scatters and reforms at ${width
   expect(Number(await canvas.getAttribute('data-points'))).toBeLessThanOrEqual(3200);
   await expect(page.getByRole('radio')).toHaveCount(0);
   await expect(page.getByText('Animation style',{exact:true})).toHaveCount(0);
-    for(const word of ['D-FLINT','PROBE','FORGE','DECODE','VUTHI']){
+    for(const word of ['D-FLINT','PROBE','FORGE','DECODE','HOEURB-VUTHI']){
       await page.clock.fastForward(3100);await page.clock.runFor(4500);
       await expect(canvas).toHaveAttribute('data-word',word);await expect(canvas).toHaveAttribute('data-phase','hold');
       const bounds=await canvas.evaluate((el:HTMLCanvasElement)=>{const data=el.getContext('2d')!.getImageData(0,0,el.width,el.height).data;let minX=el.width,minY=el.height,maxX=0,maxY=0;for(let y=0;y<el.height;y++)for(let x=0;x<el.width;x++)if(data[(y*el.width+x)*4+3]){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);}return {minX,minY,maxX,maxY,w:el.width,h:el.height};});
@@ -36,7 +36,7 @@ test('cycle controls, pointer delay, resize, suspension and reduced motion',asyn
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
   await expect(canvas).toHaveAttribute('data-running','false');const frozen=await canvas.getAttribute('data-word');await page.clock.fastForward(20000);await expect(canvas).toHaveAttribute('data-word',frozen);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});await page.clock.runFor(50);
-  await page.emulateMedia({reducedMotion:'reduce'});await expect(canvas).toHaveAttribute('data-word','VUTHI');await expect(page.locator('.hero-animation-controls')).toBeHidden();await expect(canvas).toHaveAttribute('data-animating','false');
+  await page.emulateMedia({reducedMotion:'reduce'});await expect(canvas).toHaveAttribute('data-word','HOEURB-VUTHI');await expect(page.locator('.hero-animation-controls')).toBeHidden();await expect(canvas).toHaveAttribute('data-animating','false');
 });
 test('no JavaScript leaves the VUTHI fallback visible',async({browser})=>{
   const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();await page.goto('http://localhost:4322/');await expect(page.locator('.hero-pixel-fallback')).toBeVisible();await expect(page.locator('.hero-pixel-fallback')).toHaveText('VUTHI');await expect(page.locator('.hero-animation-controls')).toBeHidden();await context.close();

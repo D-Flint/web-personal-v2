@@ -10,7 +10,9 @@ const retry=document.querySelector<HTMLButtonElement>('#chat-retry')!;
 const reset=document.querySelector<HTMLButtonElement>('#chat-reset')!;
 const launcher=document.querySelector<HTMLButtonElement>('#assistant-open')!;
 let history:{role:'user'|'assistant';content:string}[]=[];let failed='';let controller:AbortController|undefined;
-launcher.addEventListener('click',()=>{dialog.showModal();resize();input.focus();});document.querySelector('#assistant-close')!.addEventListener('click',()=>dialog.close());dialog.addEventListener('close',()=>launcher.focus());
+launcher.setAttribute('aria-controls','neko-chat');launcher.setAttribute('aria-expanded','false');
+launcher.addEventListener('click',()=>{if(dialog.open)return;dialog.show();launcher.setAttribute('aria-expanded','true');resize();input.focus();});document.querySelector('#assistant-close')!.addEventListener('click',()=>dialog.close());dialog.addEventListener('close',()=>{launcher.setAttribute('aria-expanded','false');launcher.focus({preventScroll:true});});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&dialog.open&&!document.querySelector('dialog:modal')){event.preventDefault();dialog.close();}});
 function resize(){if(!dialog.open)return;const v=window.visualViewport;if(v){const available=v.height-24;dialog.style.maxHeight=`${available}px`;dialog.style.bottom=`${Math.max(12,window.innerHeight-v.height-v.offsetTop+12)}px`;}}
 window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',resize);
 function message(role:string,text:string){const item=document.createElement('div');item.className=`chat-message ${role}`;const label=document.createElement('strong');label.textContent=role==='user'?'You':'Assistant';const content=document.createElement('span');content.textContent=text;item.append(label,content);log.append(item);log.scrollTop=log.scrollHeight;return {item,content};}

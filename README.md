@@ -35,10 +35,10 @@ Create a local `.env` from [.env.example](.env.example) if you do not already ha
 
 ```dotenv
 DEEPSEEK_API_KEY=your_private_key_here
-DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_MODEL=deepseek-flash
 ```
 
-Enter your own key locally and restart the development server. `DEEPSEEK_API_KEY` stays on the server; do not give it a `PUBLIC_` prefix. The optional model setting defaults to `deepseek-v4-flash`; use a model available to your provider account. `.env` files are ignored by Git; the safe example remains versioned.
+Enter your own key locally and restart the development server. `DEEPSEEK_API_KEY` stays on the server; do not give it a `PUBLIC_` prefix. The optional model setting defaults to `deepseek-flash`; use a model available to your provider account. `.env` files are ignored by Git; the safe example remains versioned.
 
 The contact form supports `PUBLIC_WEB3FORMS_ACCESS_KEY`. It uses the existing public form identifier when no override is supplied. Real inbox delivery requires a working provider configuration.
 

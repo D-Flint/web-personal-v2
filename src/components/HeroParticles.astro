@@ -17,7 +17,7 @@ if(ctx){
   const reduce=matchMedia('(prefers-reduced-motion: reduce)');
   const controls=document.querySelector<HTMLElement>('.hero-animation-controls')!;
   const pause=document.querySelector<HTMLButtonElement>('#pause-particles')!;
-  const words=['VUTHI','D-FLINT','PROBE','FORGE','DECODE'];
+  const words=['HOEURB-VUTHI','D-FLINT','PROBE','FORGE','DECODE'];
   type Target={x:number;y:number};
   type Point=Target & {sx:number;sy:number;vx:number;vy:number};
   let points:Point[]=[],targets:Target[][]=[],width=0,height=0,frame=0,last=0,visible=true,ready=false;
