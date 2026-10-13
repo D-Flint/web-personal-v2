@@ -1,0 +1,31 @@
+---
+export const prerender = true;
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Arrow from '../components/Arrow.astro';
+import { projects } from '../data/projects';
+const categories = [['all','All projects'],['systems','Systems & C++'],['web','Web applications'],['ai','AI & learning'],['tools','CLI & tools']];
+const tags = [...new Set(projects.flatMap(p => p.tags))].sort();
+---
+<BaseLayout title="Project journal — Hoeurb Vuthi"><section class="journal-heading"><h1>Work,<br/><em>documented.</em></h1><div><p>From a first C++ program to systems that work in the background. A growing journal of applications, tools, and technical studies.</p><a class="text-link" href="/#work">Back to selected work <Arrow/></a></div></section>
+<div class="journal-layout journal"><aside class="journal-sidebar" aria-label="Browse projects"><h2>Follow a thread.</h2><div class="category-filters" role="group" aria-label="Project category">{categories.map(([id,label])=><button class="filter-button" data-category={id} aria-pressed={id==='all'?'true':'false'}><span>{label}</span><span class="technical">{id==='all'?projects.length:projects.filter(p=>p.domain===id).length}</span></button>)}</div><details class="tech-filter"><summary>Choose technologies <span id="tag-count"></span></summary><p class="small muted">Match every selected technology.</p><div class="tags" role="group" aria-label="Technology filters">{tags.map(tag=><button class="filter-button" data-tag={tag} aria-pressed="false">{tag}</button>)}</div></details><button class="reset" id="clear-filters">Clear filters</button><p class="sidebar-note">These are supplied portfolio records. Public demos appear only where a link is available.</p></aside>
+<div class="journal-records"><div class="catalog-tools"><div class="search-field"><label for="project-search" class="sr-only">Search projects</label><input id="project-search" type="search" placeholder="Search the journal…" autocomplete="off"/><span class="search-shortcut" aria-hidden="true">/</span></div><div class="view-controls" role="group" aria-label="Project view"><button data-view="list" aria-pressed="true">List</button><button data-view="grid" aria-pressed="false">Grid</button></div></div><div class="catalog-meta"><p id="project-count" role="status">{projects.length} projects</p><span>Open a record to look inside</span></div>
+<section id="project-catalog" class="project-catalog" data-view="list" aria-label="Projects">{projects.map(p=><article class="catalog-item" data-search={`${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase()} data-domain={p.domain} data-tags={JSON.stringify(p.tags)}><span class="record-index" aria-hidden="true">{p.num}</span><div class="record-content"><h2><button data-project={p.num} aria-label={`View ${p.title} details`}>{p.title}<Arrow/></button></h2><p class="project-kind">{p.domainLabel}</p><p class="record-description">{p.description}</p><div class="tags">{p.tags.map(tag=><span class="tag">{tag}</span>)}</div></div></article>)}</section><div id="empty-results" class="empty" hidden><h2>No matching projects.</h2><p class="muted">Try a broader search or remove a technology filter.</p><button class="button secondary" id="empty-reset">Reset search & filters</button></div></div></div>
+<script>
+const search = document.querySelector<HTMLInputElement>('#project-search')!;
+const catalog = document.querySelector<HTMLElement>('#project-catalog')!;
+const items = Array.from(catalog.querySelectorAll<HTMLElement>('.catalog-item'));
+const categories = document.querySelectorAll<HTMLButtonElement>('[data-category]');
+const tags = document.querySelectorAll<HTMLButtonElement>('[data-tag]');
+let category = 'all'; const selected = new Set<string>();
+function filter(){let count=0;const query=search.value.trim().toLowerCase();items.forEach(item=>{const itemTags=JSON.parse(item.dataset.tags!);const visible=(!query||item.dataset.search!.includes(query))&&(category==='all'||item.dataset.domain===category)&&[...selected].every(tag=>itemTags.includes(tag));item.hidden=!visible;if(visible)count++;});document.querySelector('#project-count')!.textContent=`${count} of ${items.length} projects`;document.querySelector<HTMLElement>('#empty-results')!.hidden=count!==0;document.querySelector('#tag-count')!.textContent=selected.size?`(${selected.size} selected)`:'';}
+search.addEventListener('input',filter);
+categories.forEach(button=>button.addEventListener('click',()=>{category=button.dataset.category!;categories.forEach(b=>b.setAttribute('aria-pressed',String(b===button)));filter();}));
+tags.forEach(button=>button.addEventListener('click',()=>{const tag=button.dataset.tag!;selected.has(tag)?selected.delete(tag):selected.add(tag);button.setAttribute('aria-pressed',String(selected.has(tag)));filter();}));
+function reset(){search.value='';category='all';selected.clear();categories.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.category==='all')));tags.forEach(b=>b.setAttribute('aria-pressed','false'));filter();}
+document.querySelector('#clear-filters')!.addEventListener('click',reset);document.querySelector('#empty-reset')!.addEventListener('click',()=>{reset();search.focus();});
+const views=document.querySelectorAll<HTMLButtonElement>('[data-view]');
+function setView(view:string){catalog.dataset.view=view==='list'?'list':'grid';views.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===catalog.dataset.view)));}
+try{setView(localStorage.getItem('journal-project-view')||'list');}catch{}
+views.forEach(b=>b.addEventListener('click',()=>{setView(b.dataset.view!);try{localStorage.setItem('journal-project-view',catalog.dataset.view!);}catch{}}));
+document.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||/INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement)?.tagName))return;if(e.key==='/'||(e.key==='k'&&(e.ctrlKey||e.metaKey))){e.preventDefault();search.focus();}});
+</script></BaseLayout>

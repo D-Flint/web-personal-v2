@@ -1,0 +1,313 @@
+<!--
+  ──────────────────────────────────────────────────────────────────────────────
+  ClickEffects.astro — Interactive Click Particles (Paw Prints & Sakura Petals)
+  ──────────────────────────────────────────────────────────────────────────────
+  On pointer click, spawns a cat-paw print (SVG-shaped via CSS pseudo-elements)
+  and a burst of sakura petals that fly outward with randomized rotation and
+  drift. Particles auto-cleanup via animationend + fallback timeout.
+  Respects reduced-motion and coarse/touch pointer preferences.
+  ──────────────────────────────────────────────────────────────────────────────
+-->
+
+<!-- Container layer that holds all click-generated particles (paw & petals) -->
+<div id="click-effects-layer" aria-hidden="true"></div>
+
+<style is:global>
+  /* Fixed overlay covering the entire viewport — catches no pointer events */
+  #click-effects-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 9999;
+    contain: layout paint style;
+  }
+
+  /* Shared base styles for paw and petal particles */
+  .click-paw,
+  .click-petal {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  /* Cat paw-print shape — scales up and fades out on click */
+  .click-paw {
+    width: 38px;
+    height: 34px;
+    transform: translate(-50%, -50%) scale(0.4) rotate(var(--paw-rotate));
+    opacity: 0.88;
+    animation: clickPawRipple 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    filter: drop-shadow(0 8px 18px rgba(190, 24, 93, 0.22));
+  }
+
+  /* Paw pad (::before) + 4 toe beans (::after + 3 spans) — pink gradient */
+  .click-paw::before,
+  .click-paw::after,
+  .click-paw span {
+    content: "";
+    position: absolute;
+    display: block;
+    background:
+      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.44), transparent 0.42rem),
+      rgba(219, 39, 119, 0.68);
+    border: 1px solid rgba(190, 24, 93, 0.44);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.34);
+  }
+
+  /* Main paw pad (largest, bottom-center) */
+  .click-paw::before {
+    width: 19px;
+    height: 15px;
+    left: 9px;
+    bottom: 3px;
+    border-radius: 56% 56% 62% 62% / 54% 54% 76% 76%;
+  }
+
+  /* Top-left toe bean */
+  .click-paw::after {
+    width: 8px;
+    height: 10px;
+    left: 1px;
+    top: 10px;
+    border-radius: 999px;
+    transform: rotate(-25deg);
+  }
+
+  /* Top-center toe bean */
+  .click-paw span:nth-child(1) {
+    width: 8px;
+    height: 10px;
+    left: 8px;
+    top: 2px;
+    border-radius: 999px;
+    transform: rotate(-8deg);
+  }
+
+  /* Top-right toe bean (slightly taller) */
+  .click-paw span:nth-child(2) {
+    width: 8px;
+    height: 11px;
+    right: 9px;
+    top: 2px;
+    border-radius: 999px;
+    transform: rotate(9deg);
+  }
+
+  /* Bottom-right toe bean */
+  .click-paw span:nth-child(3) {
+    width: 8px;
+    height: 10px;
+    right: 1px;
+    top: 10px;
+    border-radius: 999px;
+    transform: rotate(25deg);
+  }
+
+  /* Sakura petal — bursts outward with rotation and fades */
+  .click-petal {
+    width: calc(10px * var(--scale));
+    height: calc(14px * var(--scale));
+    border-radius: 70% 30% 72% 28% / 70% 36% 64% 30%;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.72), transparent 42%),
+      var(--petal-color);
+    box-shadow:
+      inset -1px -2px 4px rgba(244, 114, 182, 0.16),
+      0 8px 18px rgba(244, 114, 182, 0.14);
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--start-rotate)) scale(var(--scale));
+    animation: clickPetalBurst var(--duration) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Subtle petal vein line */
+  .click-petal::after {
+    content: "";
+    position: absolute;
+    left: 48%;
+    top: 18%;
+    width: 1px;
+    height: 68%;
+    border-radius: 999px;
+    background: rgba(244, 114, 182, 0.34);
+    transform: rotate(10deg);
+  }
+
+  /* Dark-mode: brighter glow for paw */
+  .dark .click-paw {
+    filter: drop-shadow(0 0 16px rgba(244, 114, 182, 0.34));
+  }
+
+  /* Dark-mode: lighter paw-bean fill */
+  .dark .click-paw::before,
+  .dark .click-paw::after,
+  .dark .click-paw span {
+    background:
+      radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.34), transparent 0.42rem),
+      rgba(244, 114, 182, 0.5);
+    border-color: rgba(244, 114, 182, 0.62);
+  }
+
+  /* Dark-mode: intensified petal glow */
+  .dark .click-petal {
+    box-shadow:
+      inset -1px -2px 4px rgba(255, 255, 255, 0.14),
+      0 0 18px rgba(244, 114, 182, 0.22);
+  }
+
+  /* Paw scales up from 0.4→1.2 and fades out */
+  @keyframes clickPawRipple {
+    0% {
+      transform: translate(-50%, -50%) scale(0.4) rotate(var(--paw-rotate));
+      opacity: 0.82;
+    }
+    70% {
+      opacity: 0.32;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1.2) rotate(var(--paw-rotate));
+      opacity: 0;
+    }
+  }
+
+  /* Petal flies outward, spins, shrinks, and fades */
+  @keyframes clickPetalBurst {
+    0% {
+      transform: translate(-50%, -50%) rotate(var(--start-rotate)) scale(var(--scale));
+      opacity: 0.92;
+    }
+    42% {
+      opacity: 0.82;
+    }
+    100% {
+      transform:
+        translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+        rotate(calc(var(--start-rotate) + var(--spin)))
+        scale(calc(var(--scale) * 0.72));
+      opacity: 0;
+    }
+  }
+
+  /* Respect reduced-motion: hide all click effects */
+  @media (prefers-reduced-motion: reduce) {
+    .click-paw,
+    .click-petal {
+      animation: none !important;
+      display: none !important;
+    }
+  }
+</style>
+
+<!-- ── Click Effects Script ───────────────────────────────────────────── -->
+<script>
+  // Self-invoking IIFE — no globals leaked
+  (() => {
+    const layer = document.getElementById("click-effects-layer");
+    if (!layer) return;
+
+    /* Accessibility & device checks: skip for reduced-motion, touch, or coarse pointer */
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const coarsePointer = window.matchMedia("(pointer: coarse)");
+
+    /* Pastel pink palette for petals */
+    const colors = [
+      "rgba(251, 207, 232, 0.78)",
+      "rgba(244, 114, 182, 0.5)",
+      "rgba(249, 168, 212, 0.62)"
+    ];
+
+    /* Cap particles to avoid memory bloat */
+    const maxParticles = 50;
+
+    /* Utility: random float in [min, max] */
+    function randomBetween(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    /* Remove oldest particles when over the limit */
+    function pruneParticles() {
+      while (layer.children.length > maxParticles) {
+        layer.firstElementChild?.remove();
+      }
+    }
+
+    /* Safe DOM cleanup after animation completes (with fallback timeout) */
+    function removeAfterAnimation(node, fallbackMs) {
+      let removed = false;
+      const cleanup = () => {
+        if (removed) return;
+        removed = true;
+        node.remove();
+      };
+
+      node.addEventListener("animationend", cleanup, { once: true });
+      window.setTimeout(cleanup, fallbackMs);
+    }
+
+    /* Build a paw element with 3 toe spans positioned at (x, y) */
+    function createPaw(x, y) {
+      const paw = document.createElement("span");
+      paw.className = "click-paw";
+      paw.setAttribute("aria-hidden", "true");
+      paw.style.setProperty("--x", `${x}px`);
+      paw.style.setProperty("--y", `${y}px`);
+      paw.style.setProperty("--paw-rotate", `${randomBetween(-16, 16).toFixed(1)}deg`);
+
+      for (let i = 0; i < 3; i += 1) {
+        paw.appendChild(document.createElement("span"));
+      }
+
+      removeAfterAnimation(paw, 700);
+      return paw;
+    }
+
+    /* Build a petal element with randomized position, rotation, color */
+    function createPetal(x, y, index, total) {
+      const petal = document.createElement("span");
+      const angle = (Math.PI * 2 * index) / total + randomBetween(-0.34, 0.34);
+      const distance = randomBetween(34, 82);
+      const drift = randomBetween(-14, 14);
+      const lift = randomBetween(8, 26);
+
+      petal.className = "click-petal";
+      petal.setAttribute("aria-hidden", "true");
+      petal.style.setProperty("--x", `${x}px`);
+      petal.style.setProperty("--y", `${y}px`);
+      petal.style.setProperty("--dx", `${Math.cos(angle) * distance + drift}px`);
+      petal.style.setProperty("--dy", `${Math.sin(angle) * distance - lift}px`);
+      petal.style.setProperty("--scale", `${randomBetween(0.62, 1.16).toFixed(2)}`);
+      petal.style.setProperty("--start-rotate", `${randomBetween(0, 360).toFixed(1)}deg`);
+      petal.style.setProperty("--spin", `${randomBetween(-260, 260).toFixed(1)}deg`);
+      petal.style.setProperty("--duration", `${randomBetween(760, 1080).toFixed(0)}ms`);
+      petal.style.setProperty("--petal-color", colors[Math.floor(Math.random() * colors.length)]);
+
+      removeAfterAnimation(petal, 1150);
+      return petal;
+    }
+
+    /* Handler: skip for touch/coarse/reduced-motion, spawn paw + burst of petals */
+    function spawnClickEffect(event) {
+      if (reducedMotion.matches || coarsePointer.matches || event.pointerType === "touch") return;
+      if (event.button !== undefined && event.button !== 0) return;
+
+      const x = event.clientX;
+      const y = event.clientY;
+      const fragment = document.createDocumentFragment();
+      const petalCount = Math.floor(randomBetween(4, 7));
+
+      fragment.appendChild(createPaw(x, y));
+
+      for (let i = 0; i < petalCount; i += 1) {
+        fragment.appendChild(createPetal(x, y, i, petalCount));
+      }
+
+      layer.appendChild(fragment);
+      pruneParticles();
+    }
+
+    /* Listen for pointer clicks on the document */
+    window.addEventListener("pointerdown", spawnClickEffect, { passive: true });
+  })();
+</script>

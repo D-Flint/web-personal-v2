@@ -1,0 +1,80 @@
+# build output
+dist/
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# environment variables
+.env
+.env.production
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/
+
+# temporary build/repair scripts
+_*.py
+_*.mjs
+_*.js
+
+# agent handoff files
+handoff.md
+handoff.txt
+.vercel
+
+# agent / local reports
+.lighthouse/
+*.log
+build-output.log
+mobile-lighthouse.log
+lighthouse-local.log
+preview.log
+http.log
+.env*
+# local agent installations and machine-specific permissions
+/.agents/
+/.codex/
+/.claude/settings.local.json
+/.impeccable/
+
+# generated deliverables, scratch work, and audit reports
+/outputs/
+/scratch/
+/test_reports/
+/playwright-report/
+/test-results/
+/coverage/
+
+# Obsidian local state and installed plugins (may contain API credentials)
+agents-memory/.obsidian/
+
+# Python bytecode and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Windows metadata and editor temporary files
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+~$*
+
+# Adobe Aillistraitor
+/AI/
+
+# emergent
+.emergent/
+!.env.example

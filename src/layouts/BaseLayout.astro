@@ -1,0 +1,32 @@
+---
+import '../styles/global.css';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+import NekoWidget from '../components/NekoWidget.astro';
+import ProjectModal from '../components/ProjectModal.astro';
+import DraftingField from '../components/DraftingField.astro';
+import ScrollDrafting from '../components/ScrollDrafting.astro';
+const { title = 'Hoeurb Vuthi — Engineering Field Journal', description = 'Engineering projects, systems experiments and web development by Hoeurb Vuthi, a developer and MIS student in Phnom Penh.' } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>{title}</title><meta name="description" content={description}/><meta name="theme-color" content="#f4f1e9"/>
+<link rel="icon" href="/journal-icon.svg" type="image/svg+xml"/>
+<link rel="preload" href="/fonts/journal-serif.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
+<link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
+<meta property="og:title" content={title}/><meta property="og:description" content={description}/><meta property="og:type" content="website"/>
+</head>
+<body><a class="skip" href="#main">Skip to content</a><DraftingField/><Navbar/><main id="main" class="wrap"><slot/></main><Footer/><ProjectModal/><NekoWidget/><ScrollDrafting/><script>
+// Native modal semantics plus explicit Tab cycling avoid focus moving to browser chrome.
+document.querySelectorAll<HTMLDialogElement>('dialog').forEach(dialog=>dialog.addEventListener('keydown',event=>{
+  if(event.key!=='Tab')return;
+  const controls=Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),textarea:not(:disabled),select:not(:disabled),[tabindex="0"]')).filter(el=>el.getClientRects().length&&!el.hidden);
+  if(!controls.length){event.preventDefault();return;}
+  const first=controls[0],last=controls.at(-1)!;
+  if(event.shiftKey&&(document.activeElement===first||!dialog.contains(document.activeElement))){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){event.preventDefault();first.focus();}
+}));
+</script></body>
+</html>

@@ -1,0 +1,236 @@
+
+<!--
+  ──────────────────────────────────────────────────────────────────────────────
+  MatrixSplash.astro — Sakura-Pink Matrix Loading Screen
+  ──────────────────────────────────────────────────────────────────────────────
+  Full-screen canvas overlay shown on every page load, reloads included, as
+  pure eye candy. Draws sakura-pink Matrix rain with neko treats
+  while a typewriter cycles one of five neko-themed terminal message sets
+  (random, never repeated twice in a row — localStorage "matrix-splash-last")
+  and a classic ASCII progress bar fills 0%→100%. Fades out after ~2.5s to
+  reveal the page beneath. Sits at z-index 10000, above ClickEffects (9999).
+  Skipped immediately only when reduced motion is requested.
+  ──────────────────────────────────────────────────────────────────────────────
+-->
+<div
+  id="matrix-splash"
+  class="fixed inset-0 z-[10000] flex items-center justify-center"
+  role="status"
+  aria-label="Loading portfolio"
+>
+  <canvas id="matrix-splash-canvas" class="absolute inset-0 h-full w-full" aria-hidden="true"></canvas>
+  <div class="splash-terminal" aria-hidden="true">
+    <div class="splash-lines"><span id="matrix-splash-typed"></span><span class="matrix-caret">▌</span></div>
+    <div id="matrix-splash-bar" class="splash-bar"></div>
+    <div class="splash-skip">click anywhere or press Esc to skip &raquo;</div>
+  </div>
+</div>
+<noscript><style>#matrix-splash{display:none!important}</style></noscript>
+
+<!-- Parse-time gate: suppress the splash immediately on mobile viewports,
+     when reduced motion is requested, or if already shown in the session.
+     Runs before first paint to avoid any flash. -->
+<script is:inline>
+  (function () {
+    var el = document.getElementById('matrix-splash');
+    if (!el) return;
+    try {
+      if (
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        window.matchMedia('(max-width: 640px), (pointer: coarse)').matches ||
+        sessionStorage.getItem('matrix-splash-shown')
+      ) {
+        el.remove();
+        document.dispatchEvent(new CustomEvent('matrix-splash-done'));
+        return;
+      }
+    } catch (err) {
+      /* fall through to normal gate */
+    }
+  })();
+</script>
+
+<script>
+  import { MatrixRain } from '../utils/matrix-rain';
+
+  const MESSAGE_SETS: string[][] = [
+    ['INITIALIZING FELINE KERNEL...', 'MEOW. THE MATRIX HAS YOU.', 'PAWS ON KEYBOARD. READY.'],
+    ['LOADING NEKO SUBSYSTEM...', 'WARNING: 9 LIVES DETECTED. USING 1.', "CURIOSITY DIDN'T KILL THIS ONE."],
+    ['CALIBRATING WHISKER SENSORS...', 'SYSTEM PURRS AT FF6FA5 Hz.', "YOU CAN'T PET A GHOST IN THE MACHINE."],
+    ['BOOT SEQUENCE: CATNIP OVERDRIVE...', 'TRACING THE RED LASER POINTER...', 'NINE LIVES. ZERO REGRETS. LOGGING IN.'],
+    ['WALKING ACROSS KEYBOARD. LITERALLY.', '// ERR: UNEXPECTED PAWS', 'REBOOTING WITH FELINE PRECISION...'],
+  ];
+
+  const MOBILE = window.matchMedia('(pointer: coarse), (max-width: 640px)').matches;
+  // Keep the full 2.5s desktop theatre, but make it ultra-fast and snappy on mobile
+  // so it never blocks LCP or battery.
+  const DURATION_SCALE = MOBILE ? 0.2 : 1;
+  const PRE_DELAY = 0.15 * DURATION_SCALE;
+  const PHASES = [
+    { type: 0.55 * DURATION_SCALE, pause: 0.2 * DURATION_SCALE },
+    { type: 0.6 * DURATION_SCALE, pause: 0.2 * DURATION_SCALE },
+    { type: 0.65 * DURATION_SCALE, pause: 0.35 * DURATION_SCALE },
+  ];
+  const BAR_DURATION = 2.0 * DURATION_SCALE;
+  const TOTAL_DURATION = 2.5 * DURATION_SCALE;
+
+  function typedText(lines: string[], t: number): string {
+    let acc = PRE_DELAY;
+    let out = '';
+    for (let i = 0; i < lines.length; i++) {
+      const phase = PHASES[i];
+      const line = lines[i];
+      if (t < acc) break;
+      const local = Math.min(1, (t - acc) / phase.type);
+      out += line.slice(0, Math.floor(local * line.length));
+      if (local < 1) return out;
+      out += '\n';
+      acc += phase.type + phase.pause;
+    }
+    return out;
+  }
+
+  function barText(p: number): string {
+    if (p >= 1) return '[' + '█'.repeat(20) + '] 100%';
+    const x = p * 20;
+    const filled = Math.floor(x);
+    const frac = x - filled;
+    let bar = '';
+    for (let i = 0; i < 20; i++) {
+      if (i < filled) bar += '▓';
+      else if (i === filled && frac >= 0.5) bar += '▒';
+      else bar += '░';
+    }
+    const pct = String(Math.floor(p * 100)).padStart(3, ' ');
+    return '[' + bar + '] ' + pct + '%';
+  }
+
+  const splash = document.getElementById('matrix-splash');
+  if (splash) {
+    const canvas = document.getElementById('matrix-splash-canvas') as HTMLCanvasElement | null;
+    const typedEl = document.getElementById('matrix-splash-typed');
+    const barEl = document.getElementById('matrix-splash-bar');
+    if (canvas && typedEl && barEl) {
+      // Pick a message set at random, never the same twice in a row.
+      let idx = 0;
+      try {
+        const last = Number(localStorage.getItem('matrix-splash-last') ?? '-1');
+        idx = Math.floor(Math.random() * MESSAGE_SETS.length);
+        while (idx === last) idx = Math.floor(Math.random() * MESSAGE_SETS.length);
+        localStorage.setItem('matrix-splash-last', String(idx));
+      } catch {
+        /* storage unavailable — default to set 0 */
+      }
+      const lines = MESSAGE_SETS[idx];
+
+      const rain = new MatrixRain(canvas, {
+        trailLength: MOBILE ? 8 : 12,
+        density: MOBILE ? 2 : 3,
+        maxNeko: MOBILE ? 0 : 3,
+        nekoChance: MOBILE ? 0 : 0.02,
+        pawTrailEvery: MOBILE ? 9999 : 20,
+      });
+      rain.start();
+
+      const start = performance.now();
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        try { sessionStorage.setItem('matrix-splash-shown', '1'); } catch { /* storage unavailable */ }
+        splash.classList.add('splash-fading');
+        // Herald the reveal — ScrollReveal trigger="load" listens for this
+        // (covers natural completion AND click/Esc skips).
+        document.dispatchEvent(new CustomEvent('matrix-splash-done'));
+        document.removeEventListener('keydown', onSkipKey);
+        window.setTimeout(() => {
+          rain.destroy();
+          splash.remove();
+        }, 480);
+      };
+      // Eye candy, never a cage: click anywhere or press Escape to skip.
+      const onSkipKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') finish();
+      };
+      splash.addEventListener('click', finish);
+      document.addEventListener('keydown', onSkipKey);
+
+      let lastSplashFrame = 0;
+      let lastTyped = '';
+      let lastBar = '';
+      const frame = (now: number) => {
+        // Throttle terminal updates to ~30 fps; text changes rarely between frames.
+        if (now - lastSplashFrame < 33) {
+          requestAnimationFrame(frame);
+          return;
+        }
+        lastSplashFrame = now;
+        const t = (now - start) / 1000;
+        const typed = typedText(lines, t);
+        const bar = barText(Math.min(1, t / BAR_DURATION));
+        if (typed !== lastTyped) {
+          typedEl.textContent = typed;
+          lastTyped = typed;
+        }
+        if (bar !== lastBar) {
+          barEl.textContent = bar;
+          lastBar = bar;
+        }
+        if (t >= TOTAL_DURATION) {
+          finish();
+          return;
+        }
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+      window.setTimeout(finish, MOBILE ? 900 : 3200); // failsafe — hard cap
+    }
+  }
+</script>
+
+<style>
+  #matrix-splash {
+    background: var(--matrix-deep-rose);
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+
+  #matrix-splash.splash-fading {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .splash-terminal {
+    position: relative;
+    z-index: 1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: clamp(0.72rem, 2.4vw, 1rem);
+    line-height: 1.7;
+    color: var(--matrix-pink-bright);
+    text-shadow:
+      0 0 8px var(--matrix-glow),
+      0 0 24px var(--matrix-glow-soft);
+    white-space: pre;
+    text-align: left;
+    max-width: 92vw;
+    overflow: hidden;
+  }
+
+  .splash-bar {
+    margin-top: 1.1em;
+    letter-spacing: 0.02em;
+  }
+
+  .splash-skip {
+    margin-top: 2.2em;
+    font-size: 0.72em;
+    opacity: 0.45;
+    text-align: right;
+    letter-spacing: 0.08em;
+    animation: matrixFadeIn 0.6s ease 1.2s both;
+  }
+
+  #matrix-splash {
+    cursor: pointer;
+  }
+</style>

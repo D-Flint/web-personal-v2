@@ -1,0 +1,382 @@
+---
+// ──────────────────────────────────────────────────────────────────────────────
+//  ShrineBackgroundCrossfader.astro — Grand Narukami Fixed Background Engine
+// ──────────────────────────────────────────────────────────────────────────────
+//  Renders a single fixed, full-viewport background layer behind the entire page.
+//  Contains all 5 scenic sanctuary artworks (Hero, Projects, About, Contact, Footer)
+//  and smoothly cross-fades them dynamically during both scroll down and scroll up.
+// ──────────────────────────────────────────────────────────────────────────────
+import { Image } from 'astro:assets';
+import ScenicImage from './ScenicImage.astro';
+import heroBg from '../assets/images/hero-section-bg.png';
+import featuredBg from '../assets/images/featured-section-bg.png';
+import featuredBgMobile from '../assets/images/featured-section-bg-9x16.png';
+import aboutMeBg from '../assets/images/about-me-bg.png';
+import aboutMeBgMobile from '../assets/images/about-me-bg-9x16.png';
+import contactBg from '../assets/images/contact-bg.png';
+import contactBgMobile from '../assets/images/contact-bg-9x16.png';
+import footerBg from '../assets/images/footer-bg.png';
+---
+
+<div
+  id="shrine-bg-crossfader"
+  class="fixed inset-0 pointer-events-none -z-30 overflow-hidden select-none bg-[#0c0b16]"
+  aria-hidden="true"
+>
+  <!-- Global base dark ambient atmosphere -->
+  <div class="absolute inset-0 bg-[#0c0b16] -z-10"></div>
+
+  <!-- Layer 1: Hero (Home) -->
+  <div
+    id="bg-layer-home"
+    class="shrine-bg-layer absolute inset-0 opacity-100 transition-opacity duration-700 ease-out will-change-[opacity]"
+    data-bg="home"
+  >
+    <Image
+      src={heroBg}
+      alt=""
+      widths={[390, 540, 768, 1080, 1600, 2048]}
+      sizes="100vw"
+      format="webp"
+      quality={70}
+      class="h-full w-full object-cover object-[80%_top] sm:object-[86%_top] md:object-[86%_top] lg:object-[78%_top] xl:object-top select-none pointer-events-none"
+      loading="eager"
+      fetchpriority="high"
+      data-loading-critical
+      decoding="async"
+    />
+    <div class="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-pink-900/20 via-purple-950/10 to-transparent"></div>
+    <div class="absolute inset-0 bg-black/40 sm:hidden"></div>
+    <div class="absolute inset-y-0 left-0 w-full lg:w-3/5 bg-gradient-to-r from-black/90 via-black/60 to-black/30 sm:to-transparent"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0c0b16]/80 sm:from-transparent"></div>
+  </div>
+
+  <!-- Layer 2: Featured Projects -->
+  <div
+    id="bg-layer-projects"
+    class="shrine-bg-layer absolute inset-0 opacity-0 transition-opacity duration-700 ease-out will-change-[opacity]"
+    style="display: none;"
+    data-bg="projects"
+  >
+    <ScenicImage desktop={featuredBg} mobile={featuredBgMobile} />
+  </div>
+
+  <!-- Layer 3: About Me -->
+  <div
+    id="bg-layer-about"
+    class="shrine-bg-layer absolute inset-0 opacity-0 transition-opacity duration-700 ease-out will-change-[opacity]"
+    style="display: none;"
+    data-bg="about"
+  >
+    <ScenicImage desktop={aboutMeBg} mobile={aboutMeBgMobile} />
+  </div>
+
+  <!-- Layer 4: Contact -->
+  <div
+    id="bg-layer-contact"
+    class="shrine-bg-layer absolute inset-0 opacity-0 transition-opacity duration-700 ease-out will-change-[opacity]"
+    style="display: none;"
+    data-bg="contact"
+  >
+    <ScenicImage desktop={contactBg} mobile={contactBgMobile} />
+  </div>
+
+  <!-- Layer 5: Footer -->
+  <div
+    id="bg-layer-footer"
+    class="shrine-bg-layer absolute inset-0 opacity-0 transition-opacity duration-700 ease-out will-change-[opacity]"
+    style="display: none;"
+    data-bg="footer"
+  >
+    <Image
+      src={footerBg}
+      alt=""
+      widths={[390, 540, 768, 1200, 1600, 2048]}
+      sizes="100vw"
+      format="webp"
+      quality={70}
+      class="h-full w-full object-cover object-[75%_center] md:object-center select-none pointer-events-none"
+      loading="lazy"
+      decoding="async"
+    />
+    <div class="absolute inset-0 bg-black/20"></div>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 767px), (pointer: coarse) {
+    #shrine-bg-crossfader {
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 100vh;
+      height: 100lvh;
+    }
+  }
+</style>
+
+<script>
+  (() => {
+    function initBgCrossfader() {
+      const root = document.getElementById('shrine-bg-crossfader');
+      if (!root || root.dataset.crossfaderReady === 'true') return;
+      root.dataset.crossfaderReady = 'true';
+
+      const layers = root.querySelectorAll<HTMLElement>('.shrine-bg-layer');
+      if (!layers.length) return;
+
+      const sectionDefinitions = [
+        { id: 'home', el: document.getElementById('home') },
+        { id: 'projects', el: document.getElementById('projects') },
+        { id: 'about', el: document.getElementById('about') },
+        { id: 'contact', el: document.getElementById('contact') },
+        { id: 'footer', el: document.querySelector('footer') },
+      ];
+
+      const sections = sectionDefinitions.filter((s): s is { id: string; el: HTMLElement } => s.el !== null);
+      if (!sections.length) return;
+
+      const mobileQuery = window.matchMedia('(max-width: 767px), (pointer: coarse)');
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let currentActiveId = 'home';
+      const hideTimers = new Map<HTMLElement, ReturnType<typeof setTimeout>>();
+
+      function prepareMobileLayers() {
+        layers.forEach((layer) => {
+          clearTimeout(hideTimers.get(layer));
+          hideTimers.delete(layer);
+          layer.style.display = 'block';
+          layer.style.transition = 'none';
+
+          layer.querySelectorAll<HTMLImageElement>('img').forEach((image) => {
+            image.loading = 'eager';
+            image.decode().catch(() => undefined);
+          });
+        });
+      }
+
+      function restoreDesktopLayers() {
+        layers.forEach((layer) => {
+          layer.style.removeProperty('transition');
+        });
+        currentActiveId = '';
+      }
+
+      function setActiveLayer(targetId: string) {
+        if (currentActiveId === targetId) return;
+        currentActiveId = targetId;
+
+        layers.forEach((layer) => {
+          clearTimeout(hideTimers.get(layer));
+          hideTimers.delete(layer);
+          const match = layer.dataset.bg === targetId;
+          if (match) {
+            layer.style.display = 'block';
+            requestAnimationFrame(() => {
+              if (layer.dataset.bg !== currentActiveId) return;
+              layer.style.opacity = '1';
+              layer.style.zIndex = '1';
+            });
+          } else {
+            layer.style.opacity = '0';
+            layer.style.zIndex = '0';
+            hideTimers.set(layer, setTimeout(() => {
+              hideTimers.delete(layer);
+              if (layer.dataset.bg !== currentActiveId) {
+                layer.style.display = 'none';
+              }
+            }, 750));
+          }
+        });
+      }
+
+      function setMobileLayerWeights(weights: number[]) {
+        layers.forEach((layer, index) => {
+          const opacity = weights[index] ?? 0;
+          layer.style.display = 'block';
+          layer.style.opacity = opacity.toFixed(4);
+          layer.style.zIndex = String(index);
+        });
+      }
+
+      function smoothstep(value: number) {
+        const clamped = Math.min(1, Math.max(0, value));
+        return clamped * clamped * (3 - 2 * clamped);
+      }
+
+      function evaluateMobileBlend(discrete: boolean) {
+        const scrollY = window.scrollY || window.pageYOffset;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        const stageHeight = root.getBoundingClientRect().height || viewportHeight;
+        const maxScroll = document.documentElement.scrollHeight - viewportHeight;
+        const weights = Array.from({ length: layers.length }, () => 0);
+
+        if (scrollY < 1) {
+          weights[0] = 1;
+          setMobileLayerWeights(weights);
+          return;
+        }
+
+        if (maxScroll > 0 && maxScroll - scrollY < 2) {
+          weights[sections.length - 1] = 1;
+          setMobileLayerWeights(weights);
+          return;
+        }
+
+        const focalY = stageHeight * 0.45;
+        const blendDistance = Math.min(320, Math.max(180, stageHeight * 0.36));
+        const halfBlend = blendDistance / 2;
+
+        for (let index = 1; index < sections.length; index += 1) {
+          const sectionTop = sections[index].el.getBoundingClientRect().top + scrollY;
+          const boundary = sectionTop - focalY;
+          const start = boundary - halfBlend;
+          const end = boundary + halfBlend;
+
+          if (scrollY < start) {
+            weights[index - 1] = 1;
+            setMobileLayerWeights(weights);
+            return;
+          }
+
+          if (scrollY <= end) {
+            let progress = smoothstep((scrollY - start) / (end - start));
+            if (discrete) progress = progress < 0.5 ? 0 : 1;
+            weights[index - 1] = 1 - progress;
+            weights[index] = progress;
+            setMobileLayerWeights(weights);
+            return;
+          }
+        }
+
+        weights[sections.length - 1] = 1;
+        setMobileLayerWeights(weights);
+      }
+
+      // Continuous bidirectional scroll position evaluation
+      let ticking = false;
+
+      function evaluateActiveSection() {
+        if (mobileQuery.matches) {
+          evaluateMobileBlend(reducedMotionQuery.matches);
+          ticking = false;
+          return;
+        }
+
+        const scrollY = window.scrollY || window.pageYOffset;
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        const docHeight = document.documentElement.scrollHeight;
+        const maxScroll = docHeight - vh;
+
+        // Top of page guarantee: always switch back to home instantly
+        if (scrollY < 100) {
+          setActiveLayer('home');
+          ticking = false;
+          return;
+        }
+
+        // Bottom of page guarantee: if near bottom, switch to footer
+        if (maxScroll > 0 && maxScroll - scrollY < 100) {
+          setActiveLayer('footer');
+          ticking = false;
+          return;
+        }
+
+        // If discrete named sections exist (e.g. on homepage), use bounding client rects
+        const namedSections = sections.filter((s) => s.id !== 'footer');
+        if (namedSections.length >= 2) {
+          const focalY = vh * 0.45;
+          let chosenId = 'home';
+          let found = false;
+
+          const measuredSections = sections.map((s) => ({ ...s, rect: s.el.getBoundingClientRect() }));
+          for (const s of measuredSections) {
+            const rect = s.rect;
+            if (rect.top <= focalY && rect.bottom >= focalY) {
+              chosenId = s.id;
+              found = true;
+              break;
+            }
+          }
+
+          // Fallback to section with greatest visible area
+          if (!found) {
+            let maxVisible = -Infinity;
+            for (const s of measuredSections) {
+              const rect = s.rect;
+              const visibleTop = Math.max(0, rect.top);
+              const visibleBottom = Math.min(vh, rect.bottom);
+              const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+              if (visibleHeight > maxVisible) {
+                maxVisible = visibleHeight;
+                chosenId = s.id;
+              }
+            }
+          }
+
+          setActiveLayer(chosenId);
+          ticking = false;
+          return;
+        }
+
+        // Proportional scroll depth mode for pages like /projects (smoothly crossfades across all 5 sanctuary backdrops)
+        if (maxScroll > 0) {
+          const progress = scrollY / maxScroll;
+          let targetId = 'home';
+          if (progress < 0.22) {
+            targetId = 'home';
+          } else if (progress < 0.48) {
+            targetId = 'projects';
+          } else if (progress < 0.74) {
+            targetId = 'about';
+          } else if (progress < 0.90) {
+            targetId = 'contact';
+          } else {
+            targetId = 'footer';
+          }
+          setActiveLayer(targetId);
+        }
+
+        ticking = false;
+      }
+
+      function onScroll() {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(evaluateActiveSection);
+        }
+      }
+
+      function syncMotionMode() {
+        if (mobileQuery.matches) {
+          prepareMobileLayers();
+        } else {
+          restoreDesktopLayers();
+        }
+        onScroll();
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll, { passive: true });
+      mobileQuery.addEventListener('change', syncMotionMode);
+      reducedMotionQuery.addEventListener('change', onScroll);
+
+      document.addEventListener('astro:before-swap', () => {
+        window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('resize', onScroll);
+        mobileQuery.removeEventListener('change', syncMotionMode);
+        reducedMotionQuery.removeEventListener('change', onScroll);
+        hideTimers.forEach((timer) => clearTimeout(timer));
+      }, { once: true });
+
+      // Initial evaluation
+      syncMotionMode();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initBgCrossfader);
+    } else {
+      initBgCrossfader();
+    }
+    document.addEventListener('astro:page-load', initBgCrossfader);
+  })();
+</script>

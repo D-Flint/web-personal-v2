@@ -1,0 +1,14 @@
+---
+import { projects } from '../data/projects';
+---
+<dialog id="project-dialog" class="detail-dialog" aria-labelledby="detail-title"><div class="dialog-top"><button class="icon-button" id="detail-close" aria-label="Close project details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><h2 id="detail-title"></h2><p class="small muted" id="detail-domain"></p><p id="detail-description"></p><div id="detail-tags" class="tags"></div><h3>Inside the project</h3><ul id="detail-features"></ul><div class="detail-links"><a id="detail-live" class="text-link" target="_blank" rel="noopener noreferrer" hidden>Visit live project <span class="sr-only">(opens a new tab)</span></a><p id="detail-unpublished" class="small muted">A public demo or repository link hasn’t been supplied for this record.</p></div></dialog>
+<script id="project-data" type="application/json" set:html={JSON.stringify(projects).replace(/</g,'\u003c')}/>
+<script>
+const dialog=document.querySelector<HTMLDialogElement>('#project-dialog')!;
+const data=JSON.parse(document.querySelector('#project-data')!.textContent!);
+let opener:HTMLElement|null=null;
+document.querySelectorAll<HTMLElement>('[data-project]').forEach(button=>button.addEventListener('click',()=>{const p=data.find((p:{num:string})=>p.num===button.dataset.project);if(!p)return;opener=button;document.querySelector('#detail-title')!.textContent=p.title;document.querySelector('#detail-domain')!.textContent=p.domainLabel;document.querySelector('#detail-description')!.textContent=p.description;const tags=document.querySelector('#detail-tags')!;tags.replaceChildren(...p.tags.map((text:string)=>{const span=document.createElement('span');span.className='tag';span.textContent=text;return span;}));document.querySelector('#detail-features')!.replaceChildren(...p.features.map((text:string)=>{const li=document.createElement('li');li.textContent=text;return li;}));const link=document.querySelector<HTMLAnchorElement>('#detail-live')!;link.hidden=!p.liveUrl;if(p.liveUrl)link.href=p.liveUrl;document.querySelector<HTMLElement>('#detail-unpublished')!.hidden=!!p.liveUrl;dialog.showModal();}));
+document.querySelector('#detail-close')!.addEventListener('click',()=>dialog.close());
+dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});
+dialog.addEventListener('close',()=>opener?.focus());
+</script>

@@ -1,0 +1,36 @@
+---
+// ──────────────────────────────────────────────────────────────────────────────
+//  CatEar.astro — Grand Narukami Shrine Fluffy Kitsune Ears Component
+// ──────────────────────────────────────────────────────────────────────────────
+//  Renders authentic fluffy pink kitsune/neko ears with sakura flower & tassel
+//  ornaments using high-resolution vector SVG assets (neko-ear-left.svg, neko-ear-right.svg).
+// ──────────────────────────────────────────────────────────────────────────────
+import { Image } from 'astro:assets';
+import earLeftImg from '../assets/images/neko-ear-left.webp';
+import earRightImg from '../assets/images/neko-ear-right.webp';
+
+interface Props {
+  side?: 'left' | 'right';
+  idPrefix?: string;
+  class?: string;
+  loading?: 'eager' | 'lazy';
+  fetchpriority?: 'high' | 'auto' | 'low';
+}
+
+const { side = 'left', class: className = '', loading = 'lazy', fetchpriority = 'low' } = Astro.props;
+const earImg = side === 'left' ? earLeftImg : earRightImg;
+---
+
+<div class={`inline-flex items-center justify-center select-none pointer-events-none ${className}`} aria-hidden="true">
+  <Image
+    src={earImg}
+    alt="Grand Narukami Kitsune Ear"
+    width={120}
+    height={80}
+    densities={[1.5, 2, 3]}
+    class="w-full h-full object-contain filter drop-shadow-[0_4px_16px_rgba(244,114,182,0.35)]"
+    loading={loading}
+    fetchpriority={fetchpriority}
+    decoding="async"
+  />
+</div>

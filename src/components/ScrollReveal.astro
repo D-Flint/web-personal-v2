@@ -1,0 +1,161 @@
+---
+// ──────────────────────────────────────────────────────────────────────────────
+//  ScrollReveal.astro — Scramble→Decrypt Text Reveal
+// ──────────────────────────────────────────────────────────────────────────────
+//  Slot wrapper that decrypts its first element child's text: random Matrix
+//  glyphs sort themselves into the real string, left-to-right, with a pink
+//  block caret riding the true decrypt frontier (decryptFrontier). One
+//  component, two triggers: "load" waits for the MatrixSplash's
+//  `page-content-ready` event (starts immediately when readiness already settled);
+//  "view" uses an IntersectionObserver and fires once. With `linger`, the
+//  settled text keeps a soft sakura glow (.matrix-decrypt-done); without, it
+//  returns to its inherited color. Reduced-motion skips the scramble entirely;
+//  no-JS leaves the slotted content untouched. Pure logic: src/utils/decrypt.ts.
+//  Props: trigger ('load'|'view', default 'view'), delay (ms, default 0),
+//  duration (ms, default 1200), threshold (0–1, default 0.2), linger (bool).
+// ──────────────────────────────────────────────────────────────────────────────
+interface Props {
+  trigger?: 'load' | 'view';
+  delay?: number;
+  duration?: number;
+  threshold?: number;
+  linger?: boolean;
+  desktopOnly?: boolean;
+}
+
+const {
+  trigger = 'view',
+  delay = 0,
+  duration = 1200,
+  threshold = 0.2,
+  linger = false,
+  desktopOnly = false,
+} = Astro.props;
+---
+
+<div
+  style="display:contents"
+  data-scroll-reveal
+  data-trigger={trigger}
+  data-delay={delay}
+  data-duration={duration}
+  data-threshold={threshold}
+  data-linger={linger ? 'true' : undefined}
+  data-desktop-only={desktopOnly ? 'true' : undefined}
+>
+  <slot />
+</div>
+
+<script>
+  import { scrambleState } from '../utils/decrypt';
+
+  let reduced = true;
+  try {
+    reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    /* matchMedia unavailable — treat as reduced, content simply appears */
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-scroll-reveal]').forEach((wrap) => {
+    const el = wrap.firstElementChild as HTMLElement | null;
+    if (!el || reduced) return;
+
+    if (wrap.dataset.desktopOnly === 'true' && window.matchMedia('(max-width: 768px)').matches) {
+      return;
+    }
+
+    const trigger = wrap.dataset.trigger === 'load' ? 'load' : 'view';
+    const delay = Math.max(0, Number(wrap.dataset.delay ?? 0) || 0);
+    const duration = Math.max(1, Number(wrap.dataset.duration ?? 1200) || 1200);
+    const threshold = Number(wrap.dataset.threshold ?? 0.2);
+    const linger = wrap.dataset.linger === 'true';
+
+    let started = false;
+    const run = () => {
+      if (started) return; // once-only — never re-scramble
+      started = true;
+
+      const target = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (!target) return;
+
+      // Lock height + width before the first frame — Matrix glyphs differ in
+      // width from the real ones and would otherwise reflow surrounding text.
+      el.style.minHeight = `${el.offsetHeight}px`;
+      el.style.minWidth = `${el.offsetWidth}px`;
+      el.classList.add('matrix-decrypt-active');
+      el.setAttribute('aria-label', target);
+
+      const resolvedSpan = document.createElement('span');
+      const caret = document.createElement('span');
+      const unresolvedSpan = document.createElement('span');
+      caret.className = 'matrix-caret';
+      caret.textContent = '▌';
+      resolvedSpan.setAttribute('aria-hidden', 'true');
+      caret.setAttribute('aria-hidden', 'true');
+      unresolvedSpan.setAttribute('aria-hidden', 'true');
+
+      // Stable DOM: append spans once, only update textContent per frame.
+      // Avoids replaceChildren layout thrash (60 rebuilds/second).
+      el.textContent = '';
+      el.appendChild(resolvedSpan);
+      el.appendChild(caret);
+      el.appendChild(unresolvedSpan);
+
+      const finish = () => {
+        el.textContent = target; // clean DOM — no leftover spans
+        el.classList.remove('matrix-decrypt-active');
+        el.removeAttribute('aria-label');
+        el.style.minHeight = '';
+        el.style.minWidth = '';
+        if (linger) el.classList.add('matrix-decrypt-done');
+      };
+
+      window.setTimeout(() => {
+        const start = performance.now();
+        const frameBudget = 1000 / 30; // cap text updates at ~30 fps
+        let lastFrame = 0;
+        const frame = (now: number) => {
+          if (now - lastFrame < frameBudget) {
+            requestAnimationFrame(frame);
+            return;
+          }
+          lastFrame = now;
+          const p = (now - start) / duration;
+          if (p >= 1) {
+            finish();
+            return;
+          }
+          const { text, frontier } = scrambleState(target, p);
+          resolvedSpan.textContent = text.slice(0, frontier);
+          unresolvedSpan.textContent = text.slice(frontier);
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }, delay);
+    };
+
+    if (trigger === 'load') {
+      if (document.documentElement.classList.contains('page-is-ready')) {
+        run();
+      } else {
+        // Decrypt only after the critical viewport has been released.
+        document.addEventListener('page-content-ready', run, { once: true });
+        window.setTimeout(run, 10000); // last-resort safeguard beyond the readiness cap
+      }
+    } else {
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              io.disconnect();
+              run();
+              break;
+            }
+          }
+        },
+        { threshold },
+      );
+      io.observe(el); // wrapper is display:contents — observe the child
+    }
+  });
+</script>

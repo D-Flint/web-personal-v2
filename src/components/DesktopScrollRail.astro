@@ -1,0 +1,464 @@
+---
+// ──────────────────────────────────────────────────────────────────────────────
+//  DesktopScrollRail.astro — Grand Narukami Shrine Desktop Scroll Navigator
+// ──────────────────────────────────────────────────────────────────────────────
+//  A clean, minimalist floating talisman rail rendered exclusively on desktop
+//  viewports (≥ lg / 1024px). Displays 4 sanctuary beads corresponding to
+//  #home, #projects, #about, and #contact, dynamically illuminated as the user
+//  scrolls through each section. Features glowing tooltips on hover, smooth
+//  jump navigation, and a 1:1 synchronized luminous progress track.
+// ──────────────────────────────────────────────────────────────────────────────
+import { Image } from 'astro:assets';
+import sakuraIcon from '../assets/images/sakura-flower.webp';
+
+const sections = [
+  { id: 'home', label: 'Home', kanji: '本殿' },
+  { id: 'projects', label: 'Projects', kanji: '作品' },
+  { id: 'about', label: 'About', kanji: '紹介' },
+  { id: 'contact', label: 'Contact', kanji: '通信' },
+];
+---
+
+<!-- Desktop Right-Flank Talisman Rail (Hidden on Mobile/Tablet) -->
+<nav
+  id="desktop-scroll-rail"
+  class="hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 z-40 flex-col items-center select-none pointer-events-auto"
+  aria-label="Section navigation"
+>
+  <div
+    id="desktop-rail-pill"
+    class="desktop-rail-pill relative flex flex-col items-center gap-7 py-4 px-2 rounded-full w-8"
+  >
+    <!-- Background Track Line -->
+    <div
+      id="desktop-rail-track-bg"
+      class="absolute left-1/2 -translate-x-1/2 w-[1.5px] bg-pink-500/20 rounded-full pointer-events-none"
+    ></div>
+
+    <!-- Fixed-size progress track; only its scale changes during scrolling. -->
+    <div
+      id="desktop-rail-track-fill"
+      class="absolute left-1/2 -translate-x-1/2 w-[2px] origin-top bg-gradient-to-b from-pink-400 via-rose-400 to-pink-300 shadow-[0_0_8px_rgba(244,114,182,0.85)] rounded-full pointer-events-none"
+      style="height: 0px; transform: scaleY(0);"
+    ></div>
+
+    <!-- Moving Foxfire Orb -->
+    <div
+      id="desktop-rail-progress-orb"
+      class="absolute left-1/2 top-0 z-20 h-6 w-6 pointer-events-none will-change-transform"
+      style="transform: translate3d(-50%, 0, 0) translateY(-50%);"
+      aria-hidden="true"
+    >
+      <span class="desktop-rail-orb-halo absolute -inset-2 rounded-full"></span>
+      <span class="desktop-rail-orb-core absolute left-1/2 top-1/2 h-3.5 w-3.5 rounded-full"></span>
+    </div>
+
+    {sections.map((sec) => (
+      <a
+        href={`#${sec.id}`}
+        class="desktop-rail-item group relative flex items-center justify-center p-1.5 focus:outline-none"
+        data-section={sec.id}
+        aria-label={`Scroll to ${sec.label}`}
+      >
+        <!-- Bead Dot -->
+        <span class="desktop-rail-dot relative z-10 block w-2.5 h-2.5 rounded-full border border-pink-400/40 bg-slate-900 shadow-sm transition-all duration-200 ease-out group-hover:scale-125 group-hover:border-pink-300 group-hover:bg-pink-400/50">
+          <span class="desktop-rail-node-core absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] opacity-0" aria-hidden="true"></span>
+        </span>
+
+        <!-- Active Aura Glow -->
+        <span class="desktop-rail-glow absolute inset-0 rounded-full bg-pink-400/0 blur-sm transition-all duration-200 pointer-events-none"></span>
+
+        <!-- Hover Tooltip Plaque (Slides from Left) -->
+        <div class="desktop-rail-tooltip absolute right-full mr-3.5 px-3 py-1 rounded-xl text-pink-100 text-xs font-serif whitespace-nowrap opacity-0 pointer-events-none -translate-x-2 transition-all duration-200 ease-out group-hover:opacity-100 group-hover:translate-x-0 flex items-center gap-1.5">
+          <span class="text-[10px] text-pink-400 font-mono font-bold tracking-widest">{sec.kanji}</span>
+          <span class="text-pink-500/40">|</span>
+          <span class="tracking-wide text-[11px] font-medium">{sec.label}</span>
+          <Image src={sakuraIcon} width={10} height={10} alt="" class="w-2.5 h-2.5 object-contain ml-0.5 opacity-80" decoding="async"  densities={[1.5, 2, 3]} />
+        </div>
+      </a>
+    ))}
+
+  </div>
+</nav>
+
+<style>
+  .desktop-rail-pill {
+    width: 2rem;
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-border-top);
+    border-bottom-color: var(--glass-border-bottom);
+    box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.4), 0 8px 32px rgba(244, 114, 182, 0.12);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  }
+
+  .desktop-rail-tooltip {
+    position: absolute !important;
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-border-top);
+    border-bottom-color: var(--glass-border-bottom);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 14px rgba(244, 114, 182, 0.15);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  }
+
+  .desktop-rail-item .desktop-rail-dot {
+    background-color: #0f172a;
+    border-color: rgba(244, 114, 182, 0.4);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .desktop-rail-item.passed .desktop-rail-dot {
+    border-color: transparent;
+    background: radial-gradient(circle at 34% 28%, rgba(255, 241, 248, 0.9) 0%, rgba(216, 180, 254, 0.78) 18%, rgba(168, 85, 247, 0.6) 54%, rgba(126, 34, 206, 0.42) 100%);
+    box-shadow: 0 0 7px rgba(192, 132, 252, 0.5), 0 0 14px rgba(244, 114, 182, 0.22);
+  }
+
+  .desktop-rail-item.passed .desktop-rail-dot::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 1px solid rgba(216, 180, 254, 0.72);
+    border-top-color: rgba(255, 241, 248, 0.94);
+    border-bottom-color: transparent;
+    border-radius: 3px;
+    transform: rotate(45deg);
+    transition: transform 0.2s ease, border-color 0.2s ease, filter 0.2s ease;
+  }
+
+  .desktop-rail-item.passed .desktop-rail-dot::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 24px;
+    height: 1px;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(90deg, transparent 0%, rgba(216, 180, 254, 0.15) 16%, rgba(216, 180, 254, 0.78) 34%, rgba(255, 241, 248, 0.9) 50%, rgba(216, 180, 254, 0.78) 66%, rgba(216, 180, 254, 0.15) 84%, transparent 100%);
+    opacity: 0.82;
+  }
+
+  .desktop-rail-item.passed .desktop-rail-node-core {
+    opacity: 1;
+    background: #fff1f8;
+    box-shadow: 0 0 4px rgba(255, 241, 248, 0.95), 0 0 7px rgba(216, 180, 254, 0.9);
+  }
+
+  .desktop-rail-item.passed:hover .desktop-rail-dot::before {
+    border-color: rgba(255, 241, 248, 0.95);
+    filter: drop-shadow(0 0 4px rgba(216, 180, 254, 0.9));
+    transform: rotate(45deg) scale(1.12);
+  }
+
+  .desktop-rail-item.active .desktop-rail-dot {
+    background-color: #f472b6 !important;
+    border-color: #ffffff !important;
+    transform: scale(1.4) !important;
+    box-shadow: 0 0 14px rgba(244, 114, 182, 0.95), 0 0 3px #ffffff, inset 0 1px 1px #ffffff !important;
+  }
+
+  .desktop-rail-item.active .desktop-rail-dot::before,
+  .desktop-rail-item.active .desktop-rail-dot::after,
+  .desktop-rail-item.active .desktop-rail-node-core {
+    opacity: 0;
+  }
+
+  .desktop-rail-item.active .desktop-rail-glow {
+    background-color: rgba(244, 114, 182, 0.45) !important;
+    transform: scale(1.6);
+  }
+
+  #desktop-rail-progress-orb {
+    isolation: isolate;
+  }
+
+  .desktop-rail-orb-halo {
+    background: radial-gradient(circle, rgba(244, 114, 182, 0.6) 0%, rgba(244, 114, 182, 0.22) 42%, rgba(244, 114, 182, 0) 74%);
+    filter: blur(2px);
+    animation: desktopRailOrbBreathe 2.8s ease-in-out infinite;
+  }
+
+  .desktop-rail-orb-core {
+    background: radial-gradient(circle at 35% 30%, #ffffff 0%, #fff1f8 38%, #f472b6 72%, #db2777 100%);
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.95), 0 0 14px rgba(244, 114, 182, 0.95), 0 0 26px rgba(244, 114, 182, 0.5);
+    transform: translate(-50%, -50%);
+    animation: desktopRailOrbCoreBreathe 2.8s ease-in-out infinite;
+  }
+
+  #desktop-scroll-rail.is-scrolling .desktop-rail-orb-halo {
+    animation: desktopRailOrbTravel 0.9s ease-in-out infinite;
+  }
+
+  #desktop-scroll-rail.is-scrolling .desktop-rail-orb-core {
+    box-shadow: 0 0 6px rgba(255, 255, 255, 1), 0 0 18px rgba(244, 114, 182, 1), 0 0 34px rgba(244, 114, 182, 0.72);
+  }
+
+  @keyframes desktopRailOrbBreathe {
+    0%, 100% { opacity: 0.62; transform: scale(0.88); }
+    50% { opacity: 1; transform: scale(1.08); }
+  }
+
+  @keyframes desktopRailOrbCoreBreathe {
+    0%, 100% { transform: translate(-50%, -50%) scale(0.96); }
+    50% { transform: translate(-50%, -50%) scale(1.05); }
+  }
+
+  @keyframes desktopRailOrbTravel {
+    0%, 100% { opacity: 0.7; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.22); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .desktop-rail-dot,
+     .desktop-rail-glow,
+     .desktop-rail-dot::before,
+     .desktop-rail-dot::after,
+     .desktop-rail-node-core,
+     .desktop-rail-orb-halo,
+    .desktop-rail-orb-core {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>
+
+<script>
+  (() => {
+    function initDesktopScrollRail() {
+      if (!window.matchMedia('(min-width: 1024px)').matches) return;
+
+      const railNav = document.getElementById('desktop-scroll-rail');
+      const railPill = document.getElementById('desktop-rail-pill');
+      const trackBg = document.getElementById('desktop-rail-track-bg');
+      const trackFill = document.getElementById('desktop-rail-track-fill');
+      const progressOrb = document.getElementById('desktop-rail-progress-orb');
+      const railItems = Array.from(document.querySelectorAll<HTMLElement>('.desktop-rail-item'));
+
+      if (!railNav || !railPill || !railItems.length) return;
+
+      const sectionIds = ['home', 'projects', 'about', 'contact'];
+      const sectionEls = sectionIds
+        .map((id) => document.getElementById(id))
+        .filter((el): el is HTMLElement => el !== null);
+
+      if (sectionEls.length !== 4) return;
+
+      let dotPositions: number[] = [];
+      let sectionOffsets: number[] = [];
+      let maxScroll = 0;
+      let orbY = 0;
+      let targetOrbY = 0;
+      let hasMeasuredOrb = false;
+      let framePending = false;
+      let lastActiveIndex = -1;
+      let scrollStopTimer: number | undefined;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      function measureLayout() {
+        const pillRect = railPill.getBoundingClientRect();
+        const dots = Array.from(railPill.querySelectorAll<HTMLElement>('.desktop-rail-dot'));
+
+        if (dots.length >= 4) {
+          dotPositions = dots.map((dot) => {
+            const r = dot.getBoundingClientRect();
+            return (r.top + r.height / 2) - pillRect.top;
+          });
+
+          const topY = dotPositions[0];
+          const bottomY = dotPositions[dotPositions.length - 1];
+          const totalHeight = Math.max(0, bottomY - topY);
+
+          if (trackBg) {
+            trackBg.style.top = `${topY}px`;
+            trackBg.style.height = `${totalHeight}px`;
+          }
+          if (trackFill) {
+            trackFill.style.top = `${topY}px`;
+            trackFill.style.height = `${totalHeight}px`;
+          }
+
+          if (!hasMeasuredOrb) {
+            orbY = topY;
+            targetOrbY = topY;
+            hasMeasuredOrb = true;
+          }
+        }
+
+        const scrollY = window.scrollY || window.pageYOffset;
+        const navClearance = 72;
+
+        sectionOffsets = sectionEls.map((el, i) => {
+          if (i === 0) return 0;
+          const rect = el.getBoundingClientRect();
+          return Math.max(0, rect.top + scrollY - navClearance);
+        });
+
+        maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+
+        // Ensure strictly increasing section offsets
+        for (let i = 1; i < sectionOffsets.length; i++) {
+          if (sectionOffsets[i] <= sectionOffsets[i - 1]) {
+            sectionOffsets[i] = sectionOffsets[i - 1] + 100;
+          }
+        }
+      }
+
+      function update() {
+        if (dotPositions.length < 4 || sectionOffsets.length < 4) return;
+
+        const scrollY = window.scrollY || window.pageYOffset;
+        const topY = dotPositions[0];
+        const bottomY = dotPositions[dotPositions.length - 1];
+
+        let activeIndex = 0;
+        let targetFillY = topY;
+
+        if (scrollY <= sectionOffsets[0] + 15) {
+          activeIndex = 0;
+          targetFillY = topY;
+        } else if (scrollY >= maxScroll - 60 || scrollY >= sectionOffsets[3] - 15) {
+          activeIndex = 3;
+          targetFillY = bottomY;
+        } else {
+          // Identify current segment [i, i+1]
+          let segmentIndex = 0;
+          for (let i = 0; i < 3; i++) {
+            if (scrollY >= sectionOffsets[i] && scrollY < sectionOffsets[i + 1]) {
+              segmentIndex = i;
+              break;
+            }
+          }
+
+          const segStart = sectionOffsets[segmentIndex];
+          const segEnd = sectionOffsets[segmentIndex + 1];
+          const segProgress = Math.min(1, Math.max(0, (scrollY - segStart) / (segEnd - segStart)));
+
+          // Smooth focal switchover
+          activeIndex = segProgress >= 0.45 ? segmentIndex + 1 : segmentIndex;
+
+          const dotStart = dotPositions[segmentIndex];
+          const dotEnd = dotPositions[segmentIndex + 1];
+          targetFillY = dotStart + (dotEnd - dotStart) * segProgress;
+        }
+
+        targetOrbY = targetFillY;
+
+        if (activeIndex === lastActiveIndex) return;
+        lastActiveIndex = activeIndex;
+
+        // Update bead state
+        railItems.forEach((item, i) => {
+          if (i === activeIndex) {
+            item.classList.add('active');
+            item.classList.remove('passed');
+            item.setAttribute('aria-current', 'true');
+          } else if (i < activeIndex) {
+            item.classList.remove('active');
+            item.classList.add('passed');
+            item.removeAttribute('aria-current');
+          } else {
+            item.classList.remove('active');
+            item.classList.remove('passed');
+            item.removeAttribute('aria-current');
+          }
+        });
+      }
+
+      function renderOrb() {
+        if (!progressOrb || dotPositions.length < 4) return;
+
+        // Keep progress orb synchronized with the current scroll frame.
+        // Frame-dependent easing made the orb visibly trail during fast scrolls.
+        orbY = targetOrbY;
+
+        progressOrb.style.transform = `translate3d(-50%, ${orbY}px, 0) translateY(-50%)`;
+
+        const topY = dotPositions[0];
+        const bottomY = dotPositions[dotPositions.length - 1];
+        const fillHeight = Math.max(0, Math.min(bottomY - topY, orbY - topY));
+        if (trackFill) {
+          trackFill.style.transform = `scaleY(${fillHeight / Math.max(1, bottomY - topY)})`;
+        }
+      }
+
+      function requestFrame() {
+        if (framePending) return;
+
+        framePending = true;
+        window.requestAnimationFrame(() => {
+          framePending = false;
+          update();
+          renderOrb();
+        });
+      }
+
+      function markScrolling() {
+        if (!reducedMotion.matches) {
+          railNav.classList.add('is-scrolling');
+          document.documentElement.classList.add('page-is-scrolling');
+          window.clearTimeout(scrollStopTimer);
+          scrollStopTimer = window.setTimeout(() => {
+            railNav.classList.remove('is-scrolling');
+            document.documentElement.classList.remove('page-is-scrolling');
+          }, 180);
+        }
+      }
+
+      function onScroll() {
+        markScrolling();
+        // Layout is cached. Render immediately so scroll input does not wait
+        // for a second frame before moving the progress orb.
+        if (dotPositions.length >= 4 && sectionOffsets.length >= 4) {
+          update();
+          renderOrb();
+        } else {
+          requestFrame();
+        }
+      }
+
+      // Smooth Jump Navigation on Bead Click
+      railItems.forEach((item, index) => {
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          measureLayout();
+          const targetScroll = index === 0 ? 0 : sectionOffsets[index];
+          const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+          window.scrollTo({
+            top: targetScroll,
+            behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          });
+
+          const targetId = sectionIds[index];
+          if (history.pushState) {
+            history.pushState(null, '', `#${targetId}`);
+          }
+        });
+      });
+
+      measureLayout();
+      requestFrame();
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', () => {
+        measureLayout();
+        requestFrame();
+      }, { passive: true });
+      window.addEventListener('load', () => {
+        measureLayout();
+        requestFrame();
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initDesktopScrollRail);
+    } else {
+      initDesktopScrollRail();
+    }
+    document.addEventListener('astro:page-load', initDesktopScrollRail);
+  })();
+</script>

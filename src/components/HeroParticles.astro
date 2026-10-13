@@ -1,0 +1,124 @@
+---
+import Arrow from './Arrow.astro';
+---
+<div class="hero-pixel-field" data-hero-field>
+  <div class="hero-pixel-fallback" aria-hidden="true">VUTHI</div>
+  <canvas id="hero-particles" aria-hidden="true"></canvas>
+  <div class="hero-field-caption"><span>Hoeurb Vuthi · Engineering field journal</span></div>
+  <div class="hero-animation-controls" hidden>
+    <button type="button" id="scatter-particles">Scatter the particles <Arrow/></button>
+    <button type="button" id="pause-particles" aria-pressed="false">Pause cycle</button>
+  </div>
+</div>
+<script>
+const canvas=document.querySelector<HTMLCanvasElement>('#hero-particles')!;
+const ctx=canvas.getContext('2d');
+if(ctx){
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)');
+  const controls=document.querySelector<HTMLElement>('.hero-animation-controls')!;
+  const pause=document.querySelector<HTMLButtonElement>('#pause-particles')!;
+  const words=['VUTHI','D-FLINT','PROBE','FORGE','DECODE'];
+  type Target={x:number;y:number};
+  type Point=Target & {sx:number;sy:number;vx:number;vy:number};
+  let points:Point[]=[],targets:Target[][]=[],width=0,height=0,frame=0,last=0,visible=true,ready=false;
+  let word=0,paused=false,phase:'assemble'|'scatter'|'hold'='assemble',elapsed=0,hold=0,next=0;
+  const pointer={x:0,y:0,active:false};
+  const allowed=()=>ready&&visible&&!document.hidden&&!reduce.matches;
+  const clamp=(v:number,max:number)=>Math.max(particleSize/2,Math.min(max-particleSize/2,v));
+  const random=()=>({x:particleSize/2+Math.random()*(width-particleSize),y:particleSize/2+Math.random()*(height-particleSize)});
+  function draw(){
+    ctx!.clearRect(0,0,width,height);ctx!.fillStyle='#244dc8';
+    for(const p of points)ctx!.fillRect(p.x-particleSize/2,p.y-particleSize/2,particleSize,particleSize);
+    canvas.dataset.word=words[word];canvas.dataset.phase=phase;
+  }
+  function begin(index:number,scatter=false){
+    next=index;elapsed=0;hold=0;phase=scatter?'scatter':'assemble';
+    if(!scatter)word=index;
+    points.forEach(p=>{p.sx=p.x;p.sy=p.y;p.vx=p.vy=0;});
+    if(scatter)destinations=points.map(random);
+    wake();
+  }
+  let destinations:Target[]=[];
+  let particleSize=2;
+  function tick(time:number){
+    frame=0;if(!allowed())return;
+    const ms=Math.max(0,time-last);last=time;
+    if(phase!=='hold'){
+      elapsed+=ms;const duration=phase==='scatter'?1400:3000;
+      const t=Math.min(1,elapsed/duration),ease=1-Math.pow(1-t,3);
+      const ends=phase==='scatter'?destinations:targets[word];
+      points.forEach((p,i)=>{p.x=p.sx+(ends[i].x-p.sx)*ease;p.y=p.sy+(ends[i].y-p.sy)*ease;});
+      if(t===1){if(phase==='scatter')begin(next);else{phase='hold';hold=0;}}
+    }else{
+      if(pointer.active)hold=0;else if(!paused)hold+=ms;
+      const dt=Math.min(2,ms/16.67);
+      points.forEach((p,i)=>{
+        const target=targets[word][i],dx=p.x-pointer.x,dy=p.y-pointer.y,d=Math.hypot(dx,dy);
+        if(pointer.active&&d<95){const force=(1-d/95)*.9;p.vx+=dx/(d||1)*force*dt;p.vy+=dy/(d||1)*force*dt;}
+        p.vx=(p.vx+(target.x-p.x)*.018*dt)*Math.pow(.84,dt);p.vy=(p.vy+(target.y-p.y)*.018*dt)*Math.pow(.84,dt);
+        p.x=clamp(p.x+p.vx*dt,width);p.y=clamp(p.y+p.vy*dt,height);
+      });
+      if(!paused&&!pointer.active&&hold>=3000)begin((word+1)%words.length,true);
+    }
+    draw();if(!frame)frame=requestAnimationFrame(tick);canvas.dataset.animating='true';
+  }
+  function wake(){
+    canvas.dataset.running=String(allowed());
+    if(allowed()&&!frame){last=performance.now();frame=requestAnimationFrame(tick);}
+    else if(!allowed()){cancelAnimationFrame(frame);frame=0;canvas.dataset.animating='false';}
+  }
+  function resize(){
+    if(!ready)return;
+    const rect=canvas.getBoundingClientRect(),oldWidth=width,oldHeight=height;width=rect.width;height=rect.height;
+    if(!width||!height)return;
+    const dpr=Math.min(devicePixelRatio||1,1.5);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx!.setTransform(dpr,0,0,dpr,0,0);
+    const mask=document.createElement('canvas');mask.width=Math.ceil(width);mask.height=Math.ceil(height);const ink=mask.getContext('2d')!;
+    const masks=words.map(text=>{
+      ink.clearRect(0,0,mask.width,mask.height);let size=Math.min(width*.3,height*.8);ink.font=`400 ${size}px Journal, serif`;
+      const measure=ink.measureText(text);size*=Math.min(1,width*.9/measure.width,height*.85/(measure.actualBoundingBoxAscent+measure.actualBoundingBoxDescent));
+      ink.font=`400 ${size}px Journal, serif`;ink.textAlign='center';ink.textBaseline='alphabetic';const metrics=ink.measureText(text);
+      ink.fillText(text,width/2,(height+metrics.actualBoundingBoxAscent-metrics.actualBoundingBoxDescent)/2);
+      return ink.getImageData(0,0,mask.width,mask.height).data;
+    });
+    // Fit a complete lattice to the budget rather than dropping cells from
+    // dense strokes, which created irregular missing-particle holes.
+    const budget=points.length||3200;
+    let gap=width<700?3:5,samples:Target[][]=[];
+    do{
+      samples=masks.map(pixels=>{
+        const result:Target[]=[];
+        for(let y=gap;y<mask.height-gap;y+=gap)for(let x=gap;x<mask.width-gap;x+=gap)
+          if(pixels[(y*mask.width+x)*4+3]>140)result.push({x,y});
+        return result;
+      });
+      if(samples.every(s=>s.length<=budget))break;
+      gap++;
+    }while(gap<Math.min(width,height));
+    particleSize=gap*.68;
+    const count=points.length||Math.min(3200,Math.max(...samples.map(s=>s.length)));
+    targets=samples.map(s=>Array.from({length:count},(_,i)=>s[Math.floor(i*s.length/count)]||{x:width/2,y:height/2}));
+    if(!points.length){points=Array.from({length:count},()=>({...random(),sx:0,sy:0,vx:0,vy:0}));begin(0);}
+    else{
+      points.forEach(p=>{p.x*=width/oldWidth;p.y*=height/oldHeight;p.sx*=width/oldWidth;p.sy*=height/oldHeight;});
+      destinations=destinations.map(p=>({x:p.x*width/oldWidth,y:p.y*height/oldHeight}));
+    }
+    if(reduce.matches)staticWord();
+    canvas.dataset.points=String(points.length);canvas.dataset.ready='true';draw();wake();
+  }
+  function staticWord(){word=0;phase='hold';hold=0;pointer.active=false;points.forEach((p,i)=>{Object.assign(p,targets[0][i]);p.vx=p.vy=0;});}
+  function scatter(){if(!allowed())return;pointer.active=false;begin(word,true);}
+  canvas.addEventListener('pointermove',event=>{
+    if(!allowed()||event.pointerType==='touch')return;
+    const rect=canvas.getBoundingClientRect();pointer.x=event.clientX-rect.left;pointer.y=event.clientY-rect.top;pointer.active=true;hold=0;
+  });
+  canvas.addEventListener('pointerleave',()=>{pointer.active=false;hold=0;});
+  canvas.addEventListener('pointerdown',scatter,{passive:true});
+  document.querySelector('#scatter-particles')!.addEventListener('click',scatter);
+  pause.addEventListener('click',()=>{paused=!paused;hold=0;pause.textContent=paused?'Resume cycle':'Pause cycle';pause.setAttribute('aria-pressed',String(paused));});
+  new ResizeObserver(resize).observe(canvas);
+  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(!visible)pointer.active=false;wake();}).observe(canvas);
+  document.addEventListener('visibilitychange',()=>{pointer.active=false;wake();});
+  reduce.addEventListener('change',()=>{controls.hidden=reduce.matches;if(reduce.matches)staticWord();draw();wake();});
+  document.fonts.ready.then(()=>{ready=true;controls.hidden=reduce.matches;resize();});
+}
+</script>

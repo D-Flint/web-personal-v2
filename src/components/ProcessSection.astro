@@ -1,0 +1,77 @@
+---
+// ProcessSection.astro — "How I Work" 4-step stepper
+// Glassmorphism card with cat ears, whiskers, and scroll-reveal.
+// Placed on the homepage between ProjectGrid and AboutMe.
+import CatEar from './CatEar.astro';
+---
+
+<section id="process" class="reveal opacity-0 transition-opacity duration-1000 ease-out overflow-visible-safe" data-reveal="sakura">
+  <div class="sakura-glass-panel relative group mx-auto max-w-5xl overflow-visible-safe rounded-2xl p-8 md:p-10 transition-transform duration-500 hover:-translate-y-1 hover:scale-[1.01] will-change-transform">
+    <!-- Cat ears -->
+    <div class="pointer-events-none absolute left-0 right-0 top-0 z-30 flex justify-between px-3 sm:px-5 -translate-y-[65%] max-sm:hidden opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+      <CatEar side="left" idPrefix="stack-proc" class="stack-ear stack-ear-left h-24 w-36" />
+      <CatEar side="right" idPrefix="stack-proc" class="stack-ear stack-ear-right h-24 w-36" />
+    </div>
+
+    <!-- Section header -->
+    <div class="relative mb-3 flex items-center justify-center gap-4">
+      <h2 class="text-3xl font-bold text-white font-serif md:text-4xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">How I Work</h2>
+    </div>
+    <p class="text-center text-xs sm:text-sm font-mono uppercase tracking-[0.28em] text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.5)]">From idea to launch</p>
+
+    <!-- 4-step stepper -->
+    <div class="relative mt-10 grid grid-cols-1 gap-8 md:grid-cols-4 md:gap-4">
+      <!-- Step 1: Discovery -->
+      <div class="flex flex-col items-center text-center gap-3 relative">
+        <div class="hidden md:block absolute top-1/2 -translate-y-1/2 -right-4 w-8 h-px bg-gradient-to-r from-pink-400/40 to-transparent z-10"></div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-pink-400/40 bg-pink-500/10 backdrop-blur-md text-pink-400 shadow-sm transition-transform duration-300 hover:scale-110 will-change-transform">
+          <svg class="h-5 w-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <span class="text-xs font-mono text-pink-400">Step 01</span>
+        <h3 class="text-lg font-semibold text-pink-100 font-serif">Discovery</h3>
+        <p class="text-xs sm:text-sm text-slate-300/85 leading-relaxed max-w-[200px]">Your goals, requirements, and constraints</p>
+      </div>
+
+      <!-- Step 2: Plan & Design -->
+      <div class="flex flex-col items-center text-center gap-3 relative">
+        <div class="hidden md:block absolute top-1/2 -translate-y-1/2 -right-4 w-8 h-px bg-gradient-to-r from-pink-400/40 to-transparent z-10"></div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-pink-400/40 bg-pink-500/10 backdrop-blur-md text-pink-400 shadow-sm transition-transform duration-300 hover:scale-110 will-change-transform">
+          <svg class="h-5 w-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <span class="text-xs font-mono text-pink-400">Step 02</span>
+        <h3 class="text-lg font-semibold text-pink-100 font-serif">Plan &amp; Design</h3>
+        <p class="text-xs sm:text-sm text-slate-300/85 leading-relaxed max-w-[200px]">Architecture mapped out and signed off before building</p>
+      </div>
+
+      <!-- Step 3: Build -->
+      <div class="flex flex-col items-center text-center gap-3 relative">
+        <div class="hidden md:block absolute top-1/2 -translate-y-1/2 -right-4 w-8 h-px bg-gradient-to-r from-pink-400/40 to-transparent z-10"></div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-pink-400/40 bg-pink-500/10 backdrop-blur-md text-pink-400 shadow-sm transition-transform duration-300 hover:scale-110 will-change-transform">
+          <svg class="h-5 w-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </div>
+        <span class="text-xs font-mono text-pink-400">Step 03</span>
+        <h3 class="text-lg font-semibold text-pink-100 font-serif">Build</h3>
+        <p class="text-xs sm:text-sm text-slate-300/85 leading-relaxed max-w-[200px]">Regular updates with staging links to review progress</p>
+      </div>
+
+      <!-- Step 4: Launch & Support -->
+      <div class="flex flex-col items-center text-center gap-3 relative">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-pink-400/40 bg-pink-500/10 backdrop-blur-md text-pink-400 shadow-sm transition-transform duration-300 hover:scale-110 will-change-transform">
+          <svg class="h-5 w-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a6 6 0 00-8.3-8.3m8.3 8.3l.03.02.01-.02.01-.02m-8.3-8.3l-.01.02-.01.02m8.3 8.3a6 6 0 01-8.3-8.3m8.3 8.3l-8.3-8.3m0 0a6 6 0 018.3 8.3M12 3a9 9 0 100 18 9 9 0 000-18z" />
+          </svg>
+        </div>
+        <span class="text-xs font-mono text-pink-400">Step 04</span>
+        <h3 class="text-lg font-semibold text-pink-100 font-serif">Launch &amp; Support</h3>
+        <p class="text-xs sm:text-sm text-slate-300/85 leading-relaxed max-w-[200px]">Deployment plus a support window after delivery</p>
+      </div>
+    </div>
+  </div>
+</section>

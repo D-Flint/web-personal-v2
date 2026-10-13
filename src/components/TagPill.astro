@@ -1,0 +1,30 @@
+---
+// ──────────────────────────────────────────────────────────────────────────────
+//  TagPill.astro — Grand Narukami Kitsune Scroll Talisman Tag Component
+// ──────────────────────────────────────────────────────────────────────────────
+import { getTagSparkClass } from '../utils/tags';
+
+interface Props {
+  tag: string;
+  class?: string;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+const { tag, class: className = '', size = 'md' } = Astro.props;
+const sparkClass = getTagSparkClass(tag);
+
+const sizeClasses = {
+  sm: 'px-2 py-0.5 text-[10px]',
+  md: 'px-2.5 py-1 text-xs',
+  lg: 'px-3.5 py-1.5 text-xs sm:text-sm',
+}[size];
+---
+
+<span class={`tag-pill ${sizeClasses} ${className}`}>
+  <span class="tag-bracket tag-bracket-left" aria-hidden="true">「</span>
+  <svg class={`tag-spark ${sparkClass}`} viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+    <path d="M6 1C5.2 3 3.5 5 3.5 7.5a2.5 2.5 0 0 0 5 0C8.5 5 6.8 3 6 1Z" />
+  </svg>
+  <span class="tag-label font-mono">{tag}</span>
+  <span class="tag-bracket tag-bracket-right" aria-hidden="true">」</span>
+</span>

@@ -1,0 +1,112 @@
+---
+// ──────────────────────────────────────────────────────────────────────────────
+//  ProjectGrid.astro — Home "Featured Projects" Section
+// ──────────────────────────────────────────────────────────────────────────────
+//  Renders the 3 featured projects using the shared <ProjectCard> component so
+//  the Home cards are visually identical to the /projects Archive cards. Only the
+//  grid wrapper (and the "View All Projects" CTA) is specific to this section.
+// ──────────────────────────────────────────────────────────────────────────────
+import { Image } from 'astro:assets';
+import sakuraFlower from '../assets/images/sakura-flower.webp';
+import project1Img from '../assets/images/project-card-1.png';
+import project2Img from '../assets/images/project-card-2.png';
+import project3Img from '../assets/images/project-card-3.png';
+import ProjectCard from './ProjectCard.astro';
+
+// Wrap raw icon path content into a full <svg> (matches the Archive icon format).
+const iconSvg = (content: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${content}</svg>`;
+
+const projects = [
+  {
+    num: "01",
+    title: "Agentic AI Assistant",
+    image: project1Img,
+    domain: "ai",
+    domainLabel: "AI & Machine Learning",
+    description: "A sandboxed, autonomous AI assistant operating 24/7 on a Virtual Private Server with Docker container isolation, prompt injection defense, and automated task execution.",
+    tags: ["Algorithm", "CLI", "API", "Python"],
+    features: ["Virtual Private Server with Docker isolation", "24/7 autonomous task scheduling", "Prompt injection guard layer", "Real-time agent status dashboard"],
+    poem: "桜の下で",
+    icon: iconSvg(`<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><path d="M10 16h4"/>`),
+  },
+  {
+    num: "02",
+    title: "Portfolio Website",
+    image: project2Img,
+    domain: "web",
+    domainLabel: "Frontend & Web",
+    description: "Grand Narukami Shrine developer showcase built with Astro and Tailwind CSS, featuring dark glassmorphism, interactive particle physics, and an embedded Yae Miko AI assistant.",
+    tags: ["Astro", "Tailwind CSS", "TypeScript", "Vite"],
+    features: [
+      "Grand Narukami dark glassmorphism design system",
+      "Interactive Sakura canvas & responsive 9:16 mobile scenery",
+      "Streaming portfolio assistant with retry and clear service errors",
+      "Filterable project catalog with real-time modal details",
+    ],
+    liveUrl: "https://hoeurbvuthi.site/",
+    poem: "永遠の桜",
+    icon: iconSvg(`<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>`),
+  },
+  {
+    num: "03",
+    title: "Task Automation",
+    image: project3Img,
+    domain: "tools",
+    domainLabel: "CLI & Automation",
+    description: "CLI daemon for automated file classification, scheduled system backups, and recurring background operations with SQLite rollback logs.",
+    tags: ["Python", "Typer", "SQLite", "CLI"],
+    features: ["File watch & auto-organize by ruleset", "Cron-style email & backup scheduler", "Plugin system for custom automation modules", "SQLite audit log with rollback support"],
+    poem: "浮世の夢",
+    icon: iconSvg(`<path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>`),
+  },
+];
+---
+
+<section id="projects" class="relative w-full min-h-0 sm:min-h-[780px] lg:min-h-[900px] py-14 sm:py-16 lg:py-32 overflow-hidden flex flex-col justify-center">
+  <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
+    <!-- Shrine Header -->
+    <div class="reveal mb-8 sm:mb-12 lg:mb-16 flex items-start gap-4 sm:gap-6">
+      <!-- Left Seal: Sakura + Vertical 八重神子 -->
+      <div class="flex flex-col items-center select-none shrink-0 pt-1">
+        <Image src={sakuraFlower} width={20} height={20} alt="" decoding="async" class="object-contain"  densities={[1.5, 2, 3]} />
+        <div class="my-2 h-4 w-[1px] bg-pink-500/40"></div>
+        <span class="[writing-mode:vertical-rl] font-serif text-[11px] sm:text-xs tracking-[0.3em] text-pink-300/70 font-medium">八重神子</span>
+        <div class="my-2 h-4 w-[1px] bg-pink-500/40"></div>
+      </div>
+
+      <!-- Main Header Text -->
+      <div class="flex-1">
+        <div class="flex items-center gap-3">
+          <p class="text-xs font-mono font-semibold uppercase tracking-[0.25em] text-pink-400">FEATURED WORK</p>
+          <div class="h-[1px] w-12 sm:w-20 bg-pink-500/30"></div>
+        </div>
+        <h2 class="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl font-serif">
+          Featured <span class="text-[#fbcfe8] italic font-serif">Projects</span>
+        </h2>
+        <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/90 sm:text-base font-light">
+          A curated selection of practical systems, interactive architectures, and modern tools.
+        </p>
+      </div>
+    </div>
+
+    <!-- Unified Project Cards Grid (shared <ProjectCard> design system) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
+      {projects.map((project, i) => (
+        <ProjectCard project={project} index={i} />
+      ))}
+    </div>
+
+    <!-- Bottom CTA: View All Projects -->
+    <div class="mt-12 sm:mt-12 lg:mt-14 flex justify-center">
+      <a
+        href="/projects"
+        class="sakura-primary-btn group"
+      >
+        <Image src={sakuraFlower} width={18} height={18} alt="" class="h-4 w-4 object-contain transition-transform duration-300 group-hover:rotate-45 sm:h-[18px] sm:w-[18px]" loading="lazy" decoding="async"  densities={[1.5, 2, 3]} />
+        <span>View Projects</span>
+        <span class="font-sans transition-transform duration-200 ease-out group-hover:translate-x-1">&rarr;</span>
+      </a>
+    </div>
+  </div>
+</section>

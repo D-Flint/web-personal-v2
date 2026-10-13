@@ -1,0 +1,41 @@
+<script>
+import { wirePath } from '../utils/draftingGeometry';
+type Node = { id:string;x:number;y:number;dx:number;dy:number };
+type Edge = { from:string;to:string;fx:number;fy:number;tx:number;ty:number;axis?:string };
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const figures = Array.from(document.querySelectorAll<HTMLElement>('[data-diagram]')).map(figure=>({
+  figure, nodes:JSON.parse(figure.dataset.nodes!) as Node[], edges:JSON.parse(figure.dataset.edges!) as Edge[],
+  groups:Array.from(figure.querySelectorAll<SVGGElement>('[data-node]')),
+  wires:Array.from(figure.querySelectorAll<SVGPathElement>('[data-wire]')),
+  mobile:Array.from(figure.querySelectorAll<HTMLElement>('[data-mobile-part]')),
+}));
+let frame=0;
+function update(){
+  frame=0;
+  for(const item of figures){
+    const rect=item.figure.getBoundingClientRect();
+    if((rect.bottom<0||rect.top>innerHeight)&&!reduced.matches)continue;
+    const progress=Math.max(0,Math.min(1,(innerHeight-rect.top)/(innerHeight+rect.height)));
+    const opening=reduced.matches?0:Math.sin(progress*Math.PI);
+    const positions=new Map(item.nodes.map(node=>[node.id,{x:node.x+node.dx*opening,y:node.y+node.dy*opening}]));
+    item.groups.forEach(group=>{const point=positions.get(group.dataset.node!)!;group.setAttribute('transform',`translate(${point.x} ${point.y})`);});
+    item.edges.forEach((edge,i)=>{const from=positions.get(edge.from)!;const to=positions.get(edge.to)!;item.wires[i].setAttribute('d',wirePath({x:from.x+edge.fx,y:from.y+edge.fy},{x:to.x+edge.tx,y:to.y+edge.ty},edge.axis));});
+    item.mobile.forEach((part,i)=>{
+      const shift=(i%2?-1:1)*opening*6;
+      part.style.transform=`translateX(${shift}px)`;
+      const connector=part.querySelector('svg path');
+      if(connector){
+        const end=12-2*shift;
+        connector.setAttribute('d',`M12 0 V9 H${end} V24 m-4-5 4 5 4-5`);
+      }
+    });
+    item.figure.dataset.opening=opening.toFixed(3);
+    const label=item.figure.querySelector('.diagram-view');
+    if(label)label.textContent=reduced.matches?'Component study':opening>.65?'Exploded connections':'Scroll to inspect';
+  }
+}
+function schedule(){if(!frame&&!document.hidden)frame=requestAnimationFrame(update);}
+window.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule,{passive:true});
+reduced.addEventListener('change',schedule);document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(frame);frame=0;}else schedule();});
+update();
+</script>
