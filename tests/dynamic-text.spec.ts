@@ -15,14 +15,14 @@ for(const width of [1440,390,320])test(`dynamic text monochrome interaction and 
 });
 test('automatic word cycle suspends with page lifecycle',async({page})=>{
  await page.clock.install();await page.goto('/projects');const box=page.locator('.dynamic-particles'),canvas=box.locator('canvas');await expect(box).toHaveAttribute('data-ready','true');
- await page.clock.runFor(12800);await expect(box).toHaveAttribute('data-word','explored.');
+ await page.clock.runFor(7800);await expect(box).toHaveAttribute('data-word','explored.');
  await expect(page.locator('.motion-actions')).toHaveCount(0);
  await page.locator('.catalog-item').last().scrollIntoViewIfNeeded();await page.clock.runFor(50);await expect(box).toHaveAttribute('data-running','false');await page.clock.runFor(15000);await expect(box).toHaveAttribute('data-word','explored.');
  await box.scrollIntoViewIfNeeded();await page.clock.runFor(50);await expect(box).toHaveAttribute('data-running','true');
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});await expect(box).toHaveAttribute('data-running','false');await page.clock.runFor(15000);await expect(box).toHaveAttribute('data-word','explored.');
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});await page.clock.runFor(50);
- await page.emulateMedia({reducedMotion:'reduce'});await expect(box).toHaveAttribute('data-word','documented.');await expect(box).toHaveAttribute('data-running','false');await expect(page.locator('.motion-actions')).toHaveCount(0);
- await page.emulateMedia({reducedMotion:'no-preference'});await expect(box).toHaveAttribute('data-running','true');
+ await page.emulateMedia({reducedMotion:'reduce'});await page.clock.runFor(100);await expect(box).toHaveAttribute('data-word','documented.');await expect(box).toHaveAttribute('data-running','false');await expect(page.locator('.motion-actions')).toHaveCount(0);
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.clock.runFor(100);await expect(box).toHaveAttribute('data-running','true');
  await page.setViewportSize({width:390,height:844});await page.clock.runFor(100);await expect(box).toHaveAttribute('data-word','documented.');await expect(box).toHaveAttribute('data-running','true');
 
 });
@@ -38,7 +38,7 @@ for(const width of [1440,390,320])test(`all four words cycle and fit at ${width}
  await page.setViewportSize({width,height:width===1440?900:844});await page.clock.install();await page.goto('/projects');const box=page.locator('.dynamic-particles'),canvas=box.locator('canvas');await expect(box).toHaveAttribute('data-ready','true');
  const initial=await page.locator('.journal-heading').boundingBox();
  for(const word of ['explored.','built.','refined.','documented.']){
-  await page.clock.runFor(12800);await expect(box).toHaveAttribute('data-word',word);
+  await page.clock.runFor(7800);await expect(box).toHaveAttribute('data-word',word);
   // Pause the cycle while allowing its spring transition to finish.
   const heading=(await box.boundingBox())!;await page.mouse.move(heading.x+3,heading.y+3);await page.clock.runFor(3000);
   await page.screenshot({path:`.impeccable/review/dynamic-cycle-${width}-${word}.png`});
@@ -61,7 +61,7 @@ for(const width of [1440,390])test(`scroll nudges the lettering and springs back
 
 test('automatic word changes scatter before assigning the next word',async({page})=>{
  await page.clock.install();await page.goto('/projects');const box=page.locator('.dynamic-particles');await expect(box).toHaveAttribute('data-ready','true');
- await page.clock.runFor(10100);await expect(box).toHaveAttribute('data-phase','scatter');await expect(box).toHaveAttribute('data-word','documented.');
+ await page.clock.runFor(5100);await expect(box).toHaveAttribute('data-phase','scatter');await expect(box).toHaveAttribute('data-word','documented.');
  await page.clock.runFor(400);
  const extent=await box.locator('canvas').evaluate((c:HTMLCanvasElement)=>{const d=c.getContext('2d')!.getImageData(0,0,c.width,c.height).data,r=c.getBoundingClientRect(),word=document.querySelector('.motion-documented')!.getBoundingClientRect();let outside=0;for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(d[(y*c.width+x)*4+3]>128){const px=x*r.width/c.width+r.left,py=y*r.height/c.height+r.top;if(px<word.left-word.width-2||px>word.right+word.width+2||py<word.top-word.height-2||py>word.bottom+word.height+2)outside++;}return outside;});expect(extent).toBe(0);
  await page.clock.runFor(550);await expect(box).toHaveAttribute('data-phase','assemble');await expect(box).toHaveAttribute('data-word','explored.');
