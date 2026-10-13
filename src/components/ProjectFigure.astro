@@ -39,7 +39,7 @@ function edgePath(edge:Edge){const from=c.nodes.find(n=>n.id===edge.from)!;const
 {node.kind==='guard'&&<path d={node.detail?'m-15-26-8 8 8 8m30-16 8 8-8 8':'m-15-8-8 8 8 8m30-16 8 8-8 8'}/>}
 {node.kind==='sandbox'&&<><rect x={node.detail?'-18':'-20'} y={node.detail?'-39':'-20'} width={node.detail?'36':'40'} height={node.detail?'30':'40'}/><path d={node.detail?'M-9-47v8M0-47v8M9-47v8M-10-29h6m4 0h10m-20 8h20m-20 8h13':'M-11-28v8M0-28v8m11-8v8M-11-7h7m8 0h7m-22 9h22m-22 9h13'}/><rect x="-96" y="-88" width="192" height="176" stroke-dasharray="4 5" stroke-opacity=".55"/></>}
 {node.kind==='dashboard'&&<path d={node.detail?'M-24 5V-8h10V5zm19 0V-18H5V5zm19 0v-28h10V5z':'M-24 11v-13h10v13zm19 0V-10H5v21zm19 0v-29h10v29z'}/>}
-{(node.kind==='scheduler'||node.kind==='worker')&&<path d={node.detail?'m-21-21 11 10-11 10m22 0h21':'m-21-10 11 10-11 10m22 0h21'}/>}
+{(node.kind==='scheduler'||node.kind==='worker')&&<path d={node.detail?'m-21-27 11 8-11 8m22 0h21':'m-21-10 11 10-11 10m22 0h21'}/>}
 {node.kind==='browser'&&<path d="M-140-82h280M-122-96h5m6 0h5m6 0h5M-120-55H10m-130 12h90M-120 90h240"/>}
 {node.kind==='preview'&&<path d="m-39 22 22-21 20 9 24-25 16 15"/>}
 {node.kind==='preview-chat'&&<path d="M-38-17h76m-76 13h53m-53 13h62m-62 13h38"/>}

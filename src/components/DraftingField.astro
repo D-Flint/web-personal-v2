@@ -32,7 +32,7 @@ if (context) {
       if(rect.width&&rect.height&&rect.bottom>0&&rect.top<height)
         obstacles.push({x:rect.left-5,y:rect.top-5,width:rect.width+10,height:rect.height+10});
     };
-    document.querySelectorAll<HTMLElement>('.header, .hero-pixel-field, .figure, main button, main a, main input, main textarea, main summary, main .tags, .form-actions, .assistant-launcher, dialog[open]').forEach(el=>add(el.getBoundingClientRect()));
+    document.querySelectorAll<HTMLElement>('.header, .hero-pixel-field, .motion-heading, .figure, main button, main a, main input, main textarea, main summary, main .tags, .form-actions, .assistant-launcher, dialog[open]').forEach(el=>add(el.getBoundingClientRect()));
     document.querySelectorAll<HTMLElement>('main h1, main h2, main h3, main p, .footer').forEach(el=>{
       const range=document.createRange();range.selectNodeContents(el);
       Array.from(range.getClientRects()).forEach(add);

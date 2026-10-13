@@ -1,0 +1,125 @@
+<div class="dynamic-particles">
+  <canvas aria-hidden="true"></canvas>
+</div>
+<style>
+.dynamic-particles{position:relative;width:100%;height:100%;overflow:hidden}
+.dynamic-particles canvas{display:block;width:100%;height:100%;touch-action:pan-y}
+</style>
+<script>
+// Text Particles by Sebastian Piskaty, MIT (2024).
+// Adapted from the user's local CodePen export. Full notice: docs/licenses/text-particles-MIT.txt.
+const box=document.querySelector<HTMLElement>('.dynamic-particles')!;
+const root=box.closest<HTMLElement>('.journal-motion')!;
+const canvas=box.querySelector<HTMLCanvasElement>('canvas')!;
+const ctx=canvas.getContext('2d');
+if(ctx){
+ const words=['documented.','explored.','built.','refined.'];
+ const actions=root.querySelector<HTMLElement>('.motion-actions')!;
+ const replay=root.querySelector<HTMLButtonElement>('[data-motion-replay]')!;
+ const pause=root.querySelector<HTMLButtonElement>('[data-motion-pause]')!;
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+ type Particle={x:number;y:number;baseX:number;baseY:number;vx:number;vy:number};
+ let particles:Particle[]=[],targets:{x:number;y:number}[][]=[],word=0,hold=0,width=0,height=0,frame=0,last=0,paused=false,visible=true,ready=false,touch=0;
+ let lastScrollY=window.scrollY,pendingScroll=0;
+ const pointer={x:-500,y:-500};
+ const allowed=()=>ready&&!paused&&visible&&!document.hidden&&!reduced.matches;
+ function stop(){cancelAnimationFrame(frame);frame=0;last=0;pendingScroll=0;box.dataset.running='false';}
+ function draw(){
+  ctx!.clearRect(0,0,width,height);
+  ctx!.fillStyle=getComputedStyle(root).getPropertyValue('--blue').trim();
+  for(const p of particles){
+   ctx!.fillRect((p.x+1)*width/2-1,(1-p.y)*height/2-1,2,2);
+  }
+  box.dataset.word=words[word];box.dataset.points=String(particles.length);
+ }
+ function home(){particles.forEach(p=>{p.x=p.baseX;p.y=p.baseY;p.vx=p.vy=0;});draw();}
+ function assign(){
+  const coords=targets[word]||[];
+  particles.forEach((p,i)=>{const target=coords[Math.floor(i*coords.length/particles.length)]||{x:0,y:0};p.baseX=target.x;p.baseY=target.y;});
+  box.dataset.word=words[word];
+ }
+ function step(){
+  for(const p of particles){
+   const dx=pointer.x-p.x,dy=pointer.y-p.y,distance=Math.hypot(dx,dy);
+   if(distance<.22){
+    const force=(.22-distance)/.22,angle=Math.atan2(dy,dx),safe=Math.max(.0001,distance);
+    const rx=Math.sin(-Math.cos(-angle)*Math.sin(.5*Math.cos(force))*Math.sin(distance*distance)*Math.sin(angle*distance));
+    const ry=Math.sin(Math.cos(angle)*Math.sin(.5*Math.sin(force))*Math.sin(distance*distance)*Math.cos(angle*distance));
+    p.vx-=dx/safe*force*.001+rx;p.vy-=dy/safe*force*.001+ry;
+   }else{p.vx+=(p.baseX-p.x)*.005;p.vy+=(p.baseY-p.y)*.005;}
+   const speed=Math.hypot(p.vx,p.vy);if(speed>.045){p.vx*=.045/speed;p.vy*=.045/speed;}
+   p.x+=p.vx;p.y+=p.vy;p.vx*=.95;p.vy*=.95;
+   // Keep stirred particles within the heading field.
+   if(Math.abs(p.x)>.99){p.x=Math.sign(p.x)*.99;p.vx*=-.4;}
+   if(Math.abs(p.y)>.99){p.y=Math.sign(p.y)*.99;p.vy*=-.4;}
+  }
+ }
+ function tick(now:number){
+  frame=0;if(!allowed()){stop();return;}
+  const ms=last?Math.min(50,Math.max(0,now-last)):16.67;last=now;
+  if(touch){touch-=ms;if(touch<=0)pointer.x=pointer.y=-500;}
+  const scrollImpulse=Math.max(-1.4,Math.min(1.4,pendingScroll*.018));pendingScroll=0;
+  if(scrollImpulse){
+   // Coalesced CSS-pixel impulse; varying weights loosen the lettering gently.
+   particles.forEach((p,i)=>{const weight=.65+.35*(.5+.5*Math.sin(i*2.399));p.vy-=scrollImpulse*2/height*weight;p.vx+=scrollImpulse*2/width*Math.sin(i*1.618)*.14;});
+  }
+  if(pointer.x!==-500||scrollImpulse)hold=0;else hold+=ms;
+  if(hold>=10000){word=(word+1)%words.length;hold=0;assign();}
+  // Bounded substeps keep the reference's 60 Hz spring/damping consistent.
+  const steps=Math.max(1,Math.round(ms/16.67));for(let i=0;i<steps;i++)step();
+  draw();frame=requestAnimationFrame(tick);box.dataset.running='true';
+ }
+ function wake(){if(allowed()&&!frame){last=0;frame=requestAnimationFrame(tick);box.dataset.running='true';}else if(!allowed())stop();}
+ function measure(){
+  if(!ready)return;
+  const bounds=canvas.getBoundingClientRect();if(!bounds.width||!bounds.height)return;
+  width=bounds.width;height=bounds.height;const dpr=Math.min(devicePixelRatio||1,1.5);
+  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx!.setTransform(dpr,0,0,dpr,0,0);
+  const mask=document.createElement('canvas');mask.width=Math.ceil(width);mask.height=Math.ceil(height);const ink=mask.getContext('2d')!;
+  const span=root.querySelector<HTMLElement>('.motion-documented')!,rect=span.getBoundingClientRect(),css=getComputedStyle(span);
+  const masks=words.map(text=>{
+   ink.clearRect(0,0,mask.width,mask.height);
+   ink.font=`${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;ink.textBaseline='alphabetic';
+   const metrics=ink.measureText(text),size=parseFloat(css.fontSize);
+   const ascent=metrics.fontBoundingBoxAscent||size*.95,descent=metrics.fontBoundingBoxDescent||size*.25;
+   const baseline=rect.top-bounds.top+(rect.height-ascent-descent)/2+ascent;
+   ink.fillText(text,rect.left-bounds.left,baseline,Math.min(rect.width,width-4));
+   return ink.getImageData(0,0,mask.width,mask.height).data;
+  });
+  // Retain every sampled cell for every word, using one shared particle budget.
+  const budget=width<400?3000:5000;
+  let gap=2;
+  do{
+   targets=masks.map(data=>{
+    const coords:{x:number;y:number}[]=[];
+    for(let y=2;y<mask.height-2;y+=gap)for(let x=2;x<mask.width-2;x+=gap)if(data[(Math.floor(y)*mask.width+Math.floor(x))*4+3]>128)coords.push({x:x/width*2-1,y:1-y/height*2});
+    return coords;
+   });
+   if(targets.every(t=>t.length<=budget))break;gap+=.5;
+  }while(gap<20);
+  const count=Math.min(budget,Math.max(1500,...targets.map(t=>t.length)));
+  const old=particles;
+  if(old.length!==count)particles=Array.from({length:count},(_,i)=>old.length?{...old[Math.floor(i*old.length/count)]}:{x:0,y:0,baseX:0,baseY:0,vx:0,vy:0});
+  assign();if(!old.length||reduced.matches)home();else draw();box.dataset.ready='true';actions.hidden=false;updateControls();wake();
+ }
+ function deactivatePointer(){pointer.x=pointer.y=-500;touch=0;}
+ canvas.addEventListener('pointermove',e=>{if(!allowed()||e.pointerType==='touch')return;const r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/width*2-1;pointer.y=1-(e.clientY-r.top)/height*2;wake();});
+ canvas.addEventListener('pointerleave',event=>{if(event.pointerType!=='touch')deactivatePointer();});
+ canvas.addEventListener('pointercancel',deactivatePointer);
+ canvas.addEventListener('pointerdown',e=>{if(!allowed())return;const r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/width*2-1;pointer.y=1-(e.clientY-r.top)/height*2;if(e.pointerType==='touch')touch=350;wake();},{passive:true});
+ function updateControls(){replay.disabled=reduced.matches;pause.disabled=reduced.matches;pause.textContent=paused?'Resume':'Pause';pause.setAttribute('aria-pressed',String(paused));}
+ replay.addEventListener('click',()=>{if(!ready||reduced.matches)return;deactivatePointer();hold=0;particles.forEach(p=>{p.vx=(Math.random()-.5)*.04;p.vy=(Math.random()-.5)*.04;});paused=false;updateControls();wake();});
+ pause.addEventListener('click',()=>{paused=!paused;deactivatePointer();updateControls();wake();});
+ window.addEventListener('scroll',()=>{
+  const y=window.scrollY,delta=y-lastScrollY;lastScrollY=y;
+  deactivatePointer();
+  if(!allowed()){pendingScroll=0;return;}
+  pendingScroll=Math.max(-120,Math.min(120,pendingScroll+delta));
+ },{passive:true});
+ new ResizeObserver(measure).observe(canvas);
+ new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(!visible)deactivatePointer();wake();}).observe(canvas);
+ document.addEventListener('visibilitychange',()=>{deactivatePointer();wake();});
+ reduced.addEventListener('change',()=>{deactivatePointer();if(reduced.matches){paused=false;word=0;hold=0;assign();home();}updateControls();wake();});
+ document.fonts.ready.then(()=>{ready=true;measure();});
+}
+</script>
