@@ -2,11 +2,43 @@
 import Arrow from './Arrow.astro';
 const accessKey = import.meta.env.PUBLIC_WEB3FORMS_ACCESS_KEY || 'ada9f474-2acc-420f-a1df-f88706245294';
 ---
-<section id="contact" class="section contact-section" aria-labelledby="contact-title"><div><h2 id="contact-title">Let’s build<br/>something useful.</h2><p class="contact-intro">Have a project in mind, a question about my work, or an interesting problem? I’d like to hear it.</p><a class="email-link" href="mailto:vuthihoeurb@gmail.com">vuthihoeurb@gmail.com</a><div class="contact-links"><a href="https://github.com/D-Flint" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens a new tab)</span></a><a href="https://linkedin.com/in/hoeurbvuthi" target="_blank" rel="noopener noreferrer">LinkedIn<span class="sr-only"> (opens a new tab)</span></a></div></div><form id="contact-form" data-access-key={accessKey} novalidate><div class="form-grid"><div class="field"><label for="contact-name">Your name</label><input id="contact-name" name="name" autocomplete="name" maxlength="100" required placeholder="Name" aria-describedby="name-error"/><p class="field-error" id="name-error"></p></div><div class="field"><label for="contact-email">Email address</label><input id="contact-email" name="email" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com" aria-describedby="email-error"/><p class="field-error" id="email-error"></p></div><div class="field full"><label for="contact-subject">What’s on your mind?</label><input id="contact-subject" name="subject" maxlength="150" required placeholder="A project, a collaboration, a question…" aria-describedby="subject-error"/><p class="field-error" id="subject-error"></p></div><div class="field"><label for="contact-message">Message</label><textarea id="contact-message" name="message" minlength="10" maxlength="5000" required placeholder="Tell me a little about it." aria-describedby="message-error"></textarea><p class="field-error" id="message-error"></p></div></div><input class="honeypot" type="checkbox" name="botcheck" tabindex="-1" aria-hidden="true"/><div class="form-actions"><button id="contact-send" class="button" type="submit">Send message <Arrow/></button><p class="small muted">Delivered through Web3Forms.</p></div><p id="contact-status" class="form-status" role="status" aria-live="polite"></p></form></section>
+<section id="contact" class="section contact-section" aria-labelledby="contact-title"><div><h2 id="contact-title"><span class="sr-only">Let’s build something useful.</span><span aria-hidden="true">Let’s build<br/>something<span class="contact-ending"><span class="contact-ending-space">worth sharing.</span><span class="contact-typed">useful.</span></span></span></h2><p class="contact-intro">Have a project in mind, a question about my work, or an interesting problem? I’d like to hear it.</p><a class="email-link" href="mailto:vuthihoeurb@gmail.com">vuthihoeurb@gmail.com</a><div class="contact-links"><a href="https://github.com/D-Flint" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens a new tab)</span></a><a href="https://linkedin.com/in/hoeurbvuthi" target="_blank" rel="noopener noreferrer">LinkedIn<span class="sr-only"> (opens a new tab)</span></a></div></div><form id="contact-form" data-access-key={accessKey} novalidate><div class="form-grid"><div class="field"><label for="contact-name">Your name</label><input id="contact-name" name="name" autocomplete="name" maxlength="100" required placeholder="Name" aria-describedby="name-error"/><p class="field-error" id="name-error"></p></div><div class="field"><label for="contact-email">Email address</label><input id="contact-email" name="email" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com" aria-describedby="email-error"/><p class="field-error" id="email-error"></p></div><div class="field full"><label for="contact-subject">What’s on your mind?</label><input id="contact-subject" name="subject" maxlength="150" required placeholder="A project, a collaboration, a question…" aria-describedby="subject-error"/><p class="field-error" id="subject-error"></p></div><div class="field"><label for="contact-message">Message</label><textarea id="contact-message" name="message" minlength="10" maxlength="5000" required placeholder="Tell me a little about it." aria-describedby="message-error"></textarea><p class="field-error" id="message-error"></p></div></div><input class="honeypot" type="checkbox" name="botcheck" tabindex="-1" aria-hidden="true"/><div class="form-actions"><button id="contact-send" class="button" type="submit">Send message <Arrow/></button><p class="small muted">Delivered through Web3Forms.</p></div><p id="contact-status" class="form-status" role="status" aria-live="polite"></p></form></section>
 <script>
 const form=document.querySelector<HTMLFormElement>('#contact-form')!;
 const status=document.querySelector<HTMLElement>('#contact-status')!;
 const submit=document.querySelector<HTMLButtonElement>('#contact-send')!;
+const section=document.querySelector<HTMLElement>('#contact')!;
+const typed=section.querySelector<HTMLElement>('.contact-typed')!;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const words=['useful.','unexpected.','delightful.','bold.','worth sharing.'];
+let index=0,phase:'hold'|'erase'|'wait'|'type'='hold',timer:ReturnType<typeof setTimeout>|undefined;
+let visible=false,formFocused=false;
+const running=()=>visible&&!document.hidden&&!formFocused&&!reduced.matches;
+function delay(){return phase==='hold'?2500:phase==='erase'?45:phase==='wait'?250:90;}
+function schedule(){clearTimeout(timer);section.dataset.typing=String(running());if(running())timer=setTimeout(step,delay());}
+function step(){
+ if(!running())return;
+ if(phase==='hold')phase='erase';
+ if(phase==='erase'){
+  typed.textContent=typed.textContent!.slice(0,-1);
+  if(!typed.textContent)phase='wait';
+ }else if(phase==='wait'){
+  index=(index+1)%words.length;phase='type';
+ }else if(phase==='type'){
+  typed.textContent=words[index].slice(0,typed.textContent!.length+1);
+  if(typed.textContent===words[index])phase='hold';
+ }
+ schedule();
+}
+function complete(){typed.textContent=words[index];phase='hold';}
+form.addEventListener('focusin',()=>{formFocused=true;complete();schedule();});
+form.addEventListener('focusout',()=>queueMicrotask(()=>{formFocused=form.contains(document.activeElement);schedule();}));
+document.addEventListener('visibilitychange',schedule);
+new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;schedule();}).observe(section.querySelector('#contact-title')!);
+function preference(){
+ if(reduced.matches){index=0;complete();}schedule();
+}
+reduced.addEventListener('change',preference);preference();
 const fields=['name','email','subject','message'].map(name=>form.elements.namedItem(name) as HTMLInputElement|HTMLTextAreaElement);
 function validate(field:HTMLInputElement|HTMLTextAreaElement){const value=field.value.trim();let message='';if(!value)message=`Please enter your ${field.name==='subject'?'subject':field.name}.`;else if(field.name==='email'&&!field.validity.valid)message='Enter a valid email address.';else if(field.name==='message'&&value.length<10)message='Please write at least 10 characters.';field.setAttribute('aria-invalid',String(!!message));document.querySelector(`#${field.name}-error`)!.textContent=message;return !message;}
 fields.forEach(field=>{field.addEventListener('blur',()=>{if(field.value||field.getAttribute('aria-invalid')==='true')validate(field);});field.addEventListener('input',()=>{if(field.getAttribute('aria-invalid')==='true')validate(field);});});

@@ -90,3 +90,12 @@ input:not([type=checkbox]):not([type=radio])[aria-invalid=true]:focus,textarea[a
 .dark .schematic-node{background:var(--white);border-color:var(--field-line);color:var(--ink)}
 
 .dark .hero-pixel-fallback{color:var(--accent)}
+
+/* Reserve the longest contact ending so typing cannot shift nearby content. */
+.contact-ending{display:grid;color:var(--blue);text-wrap:initial;line-height:1.12}
+.contact-ending-space,.contact-typed{grid-area:1/1;min-width:0;overflow-wrap:normal}
+.contact-ending-space{visibility:hidden;pointer-events:none}
+.contact-typed::after{content:'';display:inline-block;height:.78em;border-right:2px solid currentColor;margin-left:.06em;vertical-align:-.03em;opacity:0}
+.contact-section[data-typing=true] .contact-typed::after{animation:contact-caret 1s steps(1,end) infinite}
+@keyframes contact-caret{0%,49%{opacity:1}50%,100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.contact-typed::after{display:none}}
