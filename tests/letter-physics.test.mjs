@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceClock, stepLetterParticle, assignLetterTargets } from '../src/utils/letterPhysics.mjs';
+import { advanceClock, stepLetterParticle, assignLetterTargets, stepLetterTransition } from '../src/utils/letterPhysics.mjs';
 const limits={left:-500,right:500,top:-500,bottom:500};
 function simulate(hz) {
  const p={x:0,y:0,vx:180,vy:40,baseX:100,baseY:20},clock={accumulator:0};
@@ -42,4 +42,10 @@ test('spatial assignment preserves all target cells and avoids crossing distant 
  const distance=particles.reduce((sum,p)=>sum+Math.hypot(p.x-p.baseX,p.y-p.baseY),0);
  assert.ok(distance<naive*.1);
  assert.deepEqual(particles.map(p=>`${p.baseX},${p.baseY}`).sort(),coords.map(p=>`${p.x},${p.y}`).sort());
+});
+
+test('timed transition follows hero ease and lands exactly without residual velocity',()=>{
+ const p={sx:10,sy:20,endX:110,endY:220,vx:50,vy:-20};
+ stepLetterTransition(p,700,1400);assert.equal(p.x,97.5);assert.equal(p.y,195);
+ stepLetterTransition(p,3000,3000);assert.equal(p.x,110);assert.equal(p.y,220);assert.equal(p.vx,0);assert.equal(p.vy,0);
 });

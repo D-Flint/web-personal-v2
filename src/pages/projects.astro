@@ -1,20 +1,33 @@
 ---
 export const prerender = true;
 import BaseLayout from '../layouts/BaseLayout.astro';
-import JournalMotion from '../components/JournalMotion.astro';
+import ProjectFigure from '../components/ProjectFigure.astro';
 import Arrow from '../components/Arrow.astro';
 import { projects } from '../data/projects';
+const studies: Record<string,string> = {'01':'agent','02':'web','03':'tools','04':'finder'};
 const categories = [['all','All projects'],['systems','Systems & C++'],['web','Web applications'],['ai','AI & learning'],['tools','CLI & tools']];
 const tags = [...new Set(projects.flatMap(p => p.tags))].sort();
 ---
-<BaseLayout title="Project journal — Hoeurb Vuthi"><JournalMotion/>
-<div class="journal-layout journal"><aside class="journal-sidebar" aria-label="Browse projects"><h2>Follow a thread.</h2><div class="category-filters" role="group" aria-label="Project category">{categories.map(([id,label])=><button class="filter-button" data-category={id} aria-pressed={id==='all'?'true':'false'}><span>{label}</span><span class="technical">{id==='all'?projects.length:projects.filter(p=>p.domain===id).length}</span></button>)}</div><details class="tech-filter"><summary>Choose technologies <span id="tag-count"></span></summary><p class="small muted">Match every selected technology.</p><div class="tags" role="group" aria-label="Technology filters">{tags.map(tag=><button class="filter-button" data-tag={tag} aria-pressed="false">{tag}</button>)}</div></details><button class="reset" id="clear-filters">Clear filters</button><p class="sidebar-note">These are supplied portfolio records. Public demos appear only where a link is available.</p></aside>
-<div class="journal-records"><div class="catalog-tools"><div class="search-field"><label for="project-search" class="sr-only">Search projects</label><input id="project-search" type="search" placeholder="Search the journal…" autocomplete="off"/><span class="search-shortcut" aria-hidden="true">/</span></div><div class="view-controls" role="group" aria-label="Project view"><button data-view="list" aria-pressed="true">List</button><button data-view="grid" aria-pressed="false">Grid</button></div></div><div class="catalog-meta"><p id="project-count" role="status">{projects.length} projects</p><span>Open a record to look inside</span></div>
-<section id="project-catalog" class="project-catalog" data-view="list" aria-label="Projects">{projects.map(p=><article class="catalog-item" data-search={`${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase()} data-domain={p.domain} data-tags={JSON.stringify(p.tags)}><span class="record-index" aria-hidden="true">{p.num}</span><div class="record-content"><h2><button data-project={p.num} aria-label={`View ${p.title} details`}>{p.title}<Arrow/></button></h2><p class="project-kind">{p.domainLabel}</p><p class="record-description">{p.description}</p><div class="tags">{p.tags.map(tag=><span class="tag">{tag}</span>)}</div></div></article>)}</section><div id="empty-results" class="empty" hidden><h2>No matching projects.</h2><p class="muted">Try a broader search or remove a technology filter.</p><button class="button secondary" id="empty-reset">Reset search & filters</button></div></div></div>
+<BaseLayout title="Projects — Hoeurb Vuthi">
+<div class="portfolio-browser">
+<header class="portfolio-heading"><div><h1>Projects</h1><p>Applications, tools, and technical studies. A closer look at how they work.</p></div><a class="text-link" href="/#work">Selected work <Arrow/></a></header>
+<div class="browser-controls">
+<div class="catalog-tools"><div class="search-field"><label for="project-search" class="sr-only">Search projects</label><input id="project-search" type="search" placeholder="Search projects or technologies" autocomplete="off"/><span class="search-shortcut" aria-hidden="true">/</span></div><div class="view-controls" role="group" aria-label="Project view"><button data-view="grid" aria-pressed="true">Gallery</button><button data-view="list" aria-pressed="false">List</button></div></div>
+<div class="category-filters" role="group" aria-label="Project category">{categories.map(([id,label])=><button class="filter-button" data-category={id} aria-pressed={id==='all'?'true':'false'}><span>{label}</span><span class="filter-count">{id==='all'?projects.length:projects.filter(p=>p.domain===id).length}</span></button>)}</div>
+<div class="filter-secondary"><details class="tech-filter"><summary>Technologies <span id="tag-count"></span></summary><p class="small muted">Match every selected technology.</p><div class="tags" role="group" aria-label="Technology filters">{tags.map(tag=><button class="filter-button" data-tag={tag} aria-pressed="false">{tag}</button>)}</div></details><button class="reset" id="clear-filters">Clear filters</button></div>
+</div>
+<div class="catalog-meta"><p id="project-count" role="status">{projects.length} projects</p><span>Explore a project for details</span></div>
+<section id="project-catalog" class="project-catalog" data-view="grid" aria-label="Projects">{projects.map(p=><article class:list={['catalog-item',{'has-study':Boolean(studies[p.num])}]} data-search={`${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase()} data-domain={p.domain} data-tags={JSON.stringify(p.tags)}>
+{studies[p.num]&&<div class="project-study"><ProjectFigure variant={studies[p.num]}/></div>}
+<div class="record-content"><p class="project-kind">{p.domainLabel}</p><h2><button data-project={p.num} aria-label={`View ${p.title} details`}>{p.title}<Arrow/></button></h2><p class="record-description">{p.description}</p><div class="tags">{p.tags.map(tag=><span class="tag">{tag}</span>)}</div><ul class="project-highlights">{p.features.slice(0,2).map(feature=><li>{feature}</li>)}</ul><button class="text-link project-explore" data-project={p.num}>Explore project <Arrow/></button></div>
+</article>)}</section>
+<div id="empty-results" class="empty" hidden><h2>No matching projects.</h2><p class="muted">Try a broader search or remove a technology filter.</p><button class="button secondary" id="empty-reset">Reset search & filters</button></div>
+</div>
 <script>
 const search = document.querySelector<HTMLInputElement>('#project-search')!;
 const catalog = document.querySelector<HTMLElement>('#project-catalog')!;
 const items = Array.from(catalog.querySelectorAll<HTMLElement>('.catalog-item'));
+const studies: Record<string,string> = {'01':'agent','02':'web','03':'tools','04':'finder'};
 const categories = document.querySelectorAll<HTMLButtonElement>('[data-category]');
 const tags = document.querySelectorAll<HTMLButtonElement>('[data-tag]');
 let category = 'all'; const selected = new Set<string>();
@@ -26,7 +39,49 @@ function reset(){search.value='';category='all';selected.clear();categories.forE
 document.querySelector('#clear-filters')!.addEventListener('click',reset);document.querySelector('#empty-reset')!.addEventListener('click',()=>{reset();search.focus();});
 const views=document.querySelectorAll<HTMLButtonElement>('[data-view]');
 function setView(view:string){catalog.dataset.view=view==='list'?'list':'grid';views.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===catalog.dataset.view)));}
-try{setView(localStorage.getItem('journal-project-view')||'list');}catch{}
+try{setView(localStorage.getItem('journal-project-view')||'grid');}catch{}
 views.forEach(b=>b.addEventListener('click',()=>{setView(b.dataset.view!);try{localStorage.setItem('journal-project-view',catalog.dataset.view!);}catch{}}));
 document.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||/INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement)?.tagName))return;if(e.key==='/'||(e.key==='k'&&(e.ctrlKey||e.metaKey))){e.preventDefault();search.focus();}});
 </script></BaseLayout>
+
+<style>
+.portfolio-browser{padding:44px 0 80px}
+.portfolio-heading{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:32px}
+.portfolio-heading h1{font-size:clamp(2.8rem,4.5vw,4rem);margin-bottom:12px}
+.portfolio-heading p{font-size:.9rem;color:var(--muted);max-width:54ch}
+.portfolio-heading .text-link{flex-shrink:0}
+.browser-controls{border-block:1px solid var(--line);padding:20px 0 14px}
+.catalog-tools{border:0;padding:0;align-items:center}
+.search-field{position:relative}.search-field input{width:100%;max-width:none;padding-right:36px}
+.search-shortcut{top:12px}
+.view-controls{align-self:center}.view-controls button{color:var(--ink)}.view-controls button[aria-pressed=true]{color:var(--white)}
+.category-filters{margin:16px 0 8px;gap:8px}.filter-button{display:inline-flex;align-items:center;gap:12px;color:var(--ink);min-height:44px}
+.filter-button[aria-pressed=true]{color:var(--on-action)}
+.filter-count{font-size:.7rem;opacity:.8;font-variant-numeric:tabular-nums}
+.filter-secondary{display:flex;align-items:start;justify-content:space-between;gap:20px}.tech-filter{border:0;padding:0;flex:1;min-width:0}.tech-filter summary{min-height:44px;display:list-item;padding:10px 0}.tech-filter .tags{margin-bottom:14px}.reset{min-height:44px;padding-right:0}
+.catalog-meta{margin:20px 0;font-size:.75rem}
+.project-catalog{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px;padding:0;border-bottom:1px solid var(--line)}
+.catalog-item{display:block;padding:32px 0;border-top:1px solid var(--line)}
+.catalog-item.has-study{grid-column:1/-1;display:grid;grid-template-columns:1.15fr 1fr;gap:56px;align-items:center;padding:40px 0}
+.project-study{min-width:0;background:var(--white);padding:22px 20px;border-radius:3px}
+.project-study :global(.diagram-board){padding:0;background:transparent;border:0}
+.project-study :global(figcaption){font-size:.65rem;gap:10px}
+.project-study :global(.diagram-view){display:none}
+.record-content{min-width:0}.catalog-item .project-kind{color:var(--blue);font-size:.73rem;margin-bottom:12px}
+.catalog-item h2{font-size:2rem;margin:0 0 16px;line-height:1.13}
+.catalog-item.has-study h2{font-size:clamp(2rem,3vw,3rem)}
+.catalog-item h2 button{font:inherit;border:0;background:transparent;color:var(--ink);padding:0;display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;text-align:left}.catalog-item h2 button:hover{color:var(--blue)}
+.record-description{font-size:.88rem;color:var(--muted);max-width:55ch}
+.catalog-item .tags{margin:18px 0;gap:6px}.catalog-item .tag{font-size:.68rem}
+.project-highlights{padding:16px 0 0 17px;border-top:1px solid var(--line);margin:0;color:var(--muted);font-size:.76rem;line-height:1.6}.project-highlights li+li{margin-top:5px}
+.catalog-item .project-explore{margin:18px 0 0;text-decoration:none;padding:4px 0;min-height:44px;font-size:.8rem}
+.project-catalog[data-view=list]{grid-template-columns:1fr;gap:0}
+.project-catalog[data-view=list] .catalog-item{display:block;padding:26px 0}
+.project-catalog[data-view=list] .project-study,.project-catalog[data-view=list] .project-highlights,.project-catalog[data-view=list] .project-explore{display:none}
+.project-catalog[data-view=list] .record-content{max-width:850px}
+.project-catalog[data-view=list] h2{font-size:1.8rem}.project-catalog[data-view=list] .project-kind{display:block;margin-bottom:8px}
+.project-catalog[data-view=list] .tags{display:flex;margin:14px 0 0}.project-catalog[data-view=list] .record-description{max-width:70ch}
+@media(max-width:900px){.catalog-item.has-study{gap:28px;grid-template-columns:1fr 1fr}.project-study{padding:16px}.project-catalog{column-gap:28px}}
+@media(max-width:700px){.portfolio-browser{padding-top:28px}.portfolio-heading{display:block;margin-bottom:24px}.portfolio-heading .text-link{margin-top:16px}.catalog-tools{grid-template-columns:1fr;gap:12px}.view-controls{justify-self:start}.category-filters{gap:6px}.filter-button{font-size:.73rem;padding:8px 10px;gap:8px}.catalog-meta{font-size:.68rem;gap:16px}.project-catalog{grid-template-columns:1fr}.catalog-item.has-study{grid-template-columns:1fr;gap:24px;padding:28px 0}.catalog-item.has-study .record-content{grid-row:1}.catalog-tools{grid-template-columns:minmax(0,1fr) auto;gap:8px}.view-controls{gap:4px}.view-controls button{padding:10px 8px}.search-field input{font-size:.76rem;padding-left:10px}.category-filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.category-filters .filter-button{flex-shrink:0}.catalog-item{padding:28px 0}.catalog-item h2,.catalog-item.has-study h2{font-size:2rem}.project-study{padding:20px}.record-description{font-size:.85rem}.project-study :global(.mobile-schematic){margin-top:18px}.project-study :global(.schematic-node){background:var(--paper)}
+}
+</style>

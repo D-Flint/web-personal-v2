@@ -3,7 +3,14 @@ import { wirePath } from '../utils/draftingGeometry';
 const { variant = 'agent' } = Astro.props;
 type Node = { id:string; x:number; y:number; dx:number; dy:number; kind:string; label:string; detail?:string[]; w?:number; h?:number };
 type Edge = { from:string; to:string; fx:number; fy:number; tx:number; ty:number; axis?:string };
-const configurations:Record<string,{label:string;stack:string;nodes:Node[];edges:Edge[];steps:string[]}> = {
+const configurations:Record<string,{label:string;stack:string;nodes:Node[];edges:Edge[];steps:string[];viewBox?:string;caption?:string}> = {
+  finder:{label:'AI Models Finder architecture',stack:'React / Astro / TypeScript',viewBox:'0 0 770 390',caption:'Feature-based architecture schematic · not a screenshot',steps:['Benchmark sources · multiple score providers','Verified scores · metrics and model rankings','Recommendation algorithm · matches scores to user needs','Ranked model matches · compare and choose'],nodes:[
+    {id:'sources',x:90,y:100,dx:-8,dy:-12,kind:'box',label:'Benchmark sources',detail:['Multiple sources'],w:146,h:68},
+    {id:'scores',x:300,y:100,dx:0,dy:-12,kind:'box',label:'Verified scores',detail:['Metrics + rankings'],w:142,h:68},
+    {id:'needs',x:300,y:280,dx:-8,dy:12,kind:'box',label:'User needs',detail:['Use cases + requirements'],w:158,h:68},
+    {id:'recommend',x:510,y:190,dx:0,dy:0,kind:'box',label:'Recommendation',detail:['Matching algorithm'],w:150,h:76},
+    {id:'matches',x:690,y:190,dx:8,dy:0,kind:'box',label:'Model matches',detail:['Compare + choose'],w:134,h:76},
+  ],edges:[{from:'sources',to:'scores',fx:73,fy:0,tx:-71,ty:0},{from:'scores',to:'recommend',fx:71,fy:0,tx:-75,ty:-14},{from:'needs',to:'recommend',fx:79,fy:0,tx:-75,ty:14},{from:'recommend',to:'matches',fx:75,fy:0,tx:-67,ty:0}]},
   agent:{label:'Assistant architecture',stack:'Docker / Python',steps:['User request · task intent','Prompt guard · screen input and tool output','Docker sandbox · isolated task execution','Status dashboard · live agent state'],nodes:[
     {id:'input',x:48,y:142,dx:-5,dy:-18,kind:'input',label:'User request',detail:['Task intent'],w:106,h:60},
     {id:'guard',x:190,y:142,dx:-12,dy:10,kind:'guard',label:'Prompt guard',detail:['Screen input + tool output','Enforce user-authorized tools'],w:132,h:94},
@@ -31,8 +38,9 @@ const c = configurations[variant] || configurations.agent;
 function edgePath(edge:Edge){const from=c.nodes.find(n=>n.id===edge.from)!;const to=c.nodes.find(n=>n.id===edge.to)!;return wirePath({x:from.x+edge.fx,y:from.y+edge.fy},{x:to.x+edge.tx,y:to.y+edge.ty},edge.axis);}
 ---
 <figure class="figure" data-diagram data-nodes={JSON.stringify(c.nodes)} data-edges={JSON.stringify(c.edges)}><div class="diagram-board"><div class="diagram-label"><span>{c.label}</span><span class="technical">{c.stack}</span></div>
-<svg class="desktop-schematic" viewBox={variant==='agent'?'0 0 690 390':'0 0 520 330'} role="img" aria-label={`${c.label}: ${c.steps.join('; ')}${variant==='agent'?'. Scheduled work enters the same isolated sandbox':''}. Scroll opens the component layout while keeping its connections attached.`}>
-<g fill="none" stroke="currentColor" stroke-width="1.15">{c.edges.map((edge,i)=><path data-wire={i} d={edgePath(edge)}/>)}</g>
+<svg class="desktop-schematic" viewBox={c.viewBox || (variant==='agent'?'0 0 690 390':'0 0 520 330')} role="img" aria-label={`${c.label}: ${c.steps.join('; ')}${variant==='agent'?'. Scheduled work enters the same isolated sandbox':''}. Scroll opens the component layout while keeping its connections attached.`}>
+{variant==='finder'&&<defs><marker id="finder-flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="currentColor" stroke-width="1.5"/></marker></defs>}
+<g fill="none" stroke="currentColor" stroke-width="1.15">{c.edges.map((edge,i)=><path data-wire={i} d={edgePath(edge)} marker-end={variant==='finder'?'url(#finder-flow-arrow)':undefined}/>)}</g>
 {c.nodes.map(node=><g data-node={node.id} transform={`translate(${node.x} ${node.y})`}>
 <g fill="none" stroke="currentColor" stroke-width="1.15">
 {node.kind==='input'?<circle r="7"/>:node.kind==='database'?<><ellipse cy="-12" rx="40" ry="12"/><path d="M-40-12v30c0 16 80 16 80 0v-30M-40 2c0 16 80 16 80 0"/></>:<rect x={-(node.w||76)/2} y={-(node.h||76)/2} width={node.w||76} height={node.h||76} rx="2"/>}
@@ -48,4 +56,9 @@ function edgePath(edge:Edge){const from=c.nodes.find(n=>n.id===edge.from)!;const
 {node.detail?<><text text-anchor="middle" y={node.kind==='sandbox'?14:node.kind==='input'?23:node.kind==='scheduler'?8:node.kind==='dashboard'?20:7} fill="currentColor" font-family="Inter,sans-serif" font-size="11" font-weight="600">{node.label}</text>{node.detail.map((line,i)=><text text-anchor="middle" y={(node.kind==='sandbox'?30:node.kind==='scheduler'?24:node.kind==='input'?39:node.kind==='dashboard'?36:24)+i*14} fill="currentColor" font-family="Inter,sans-serif" font-size="8.5">{line}</text>)}</>:<text text-anchor="middle" y={node.kind==='box'?4:node.kind==='input'?30:(node.h||48)/2+((node.kind==='preview'||node.kind==='preview-chat')?41:23)} fill="currentColor" font-family="Inter,sans-serif" font-size="11">{node.label}</text>}
 </g>)}
 </svg>
-<ol class="mobile-schematic" aria-label={c.label}>{c.steps.map((step,i)=><li data-mobile-part={i}><span class="schematic-node"><span class="node-dot" aria-hidden="true"></span>{step}</span>{i<c.steps.length-1&&<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 4v16m-5-5 5 5 5-5"/></svg>}</li>)}</ol>{variant==='agent'&&<p class="mobile-scheduled">Task scheduler · 24/7 scheduled work <span aria-hidden="true">↗</span> Docker sandbox</p>}</div><figcaption><span>Architecture study · schematic, not a screenshot</span><span class="technical diagram-view">Scroll to inspect</span></figcaption></figure>
+<ol class="mobile-schematic" aria-label={c.label}>{c.steps.map((step,i)=><li data-mobile-part={i}><span class="schematic-node"><span class="node-dot" aria-hidden="true"></span>{step}</span>{i<c.steps.length-1&&<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 4v16m-5-5 5 5 5-5"/></svg>}</li>)}</ol>{variant==='finder'&&<p class="finder-input-note">User needs: use cases and requirements feed the recommendation algorithm alongside benchmark scores.</p>}{variant==='agent'&&<p class="mobile-scheduled">Task scheduler · 24/7 scheduled work <span aria-hidden="true">↗</span> Docker sandbox</p>}</div><figcaption><span>{c.caption || 'Architecture study · schematic, not a screenshot'}</span><span class="technical diagram-view">Scroll to inspect</span></figcaption></figure>
+
+<style>
+.finder-input-note{display:none}
+@media(max-width:700px){.finder-input-note{display:block;margin-top:14px;font-size:.72rem;line-height:1.6;color:var(--muted)}}
+</style>

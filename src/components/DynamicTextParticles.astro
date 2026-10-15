@@ -6,7 +6,7 @@
 .dynamic-particles canvas{position:fixed;inset:0;display:block;width:100vw;height:100dvh;max-width:none;pointer-events:none;touch-action:pan-y}
 </style>
 <script>
-import { advanceClock, stepLetterParticle, assignLetterTargets } from '../utils/letterPhysics.mjs';
+import { advanceClock, stepLetterParticle, assignLetterTargets, stepLetterTransition } from '../utils/letterPhysics.mjs';
 // Text Particles by Sebastian Piskaty, MIT (2024).
 // Adapted from the user's local CodePen export. Full notice: docs/licenses/text-particles-MIT.txt.
 const box=document.querySelector<HTMLElement>('.dynamic-particles')!;
@@ -16,17 +16,16 @@ const ctx=canvas.getContext('2d');
 if(ctx){
  const words=['documented.','explored.','built.','refined.'];
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
- type Particle={x:number;y:number;baseX:number;baseY:number;vx:number;vy:number};
+ type Particle={x:number;y:number;baseX:number;baseY:number;vx:number;vy:number;sx:number;sy:number;endX:number;endY:number};
  let particles:Particle[]=[],targets:{x:number;y:number}[][]=[],word=0,hold=0,width=0,height=0,frame=0,last=0,visible=true,ready=false,touch=0;
- let limits={left:0,right:1,bottom:0,top:1},wordScale={x:1,y:1};
+ let limits={left:0,right:1,bottom:0,top:1};
  const clock={accumulator:0};
  let color='',pointerWeight=0,pointerActive=false;
  const refreshColor=()=>{color=getComputedStyle(root).getPropertyValue('--blue').trim();};
  let phase:'hold'|'scatter'|'assemble'='hold',elapsed=0,nextWord=0;
  function scatter(next:number){
   nextWord=next;phase='scatter';elapsed=0;hold=0;
-  const cx=(limits.left+limits.right)/2,cy=(limits.bottom+limits.top)/2;
-  particles.forEach((p,i)=>{const angle=Math.atan2((p.y-cy)/wordScale.y,(p.x-cx)/wordScale.x)+Math.sin(i*2.399)*.65;const speed=.4+Math.random()*.3;p.vx+=Math.cos(angle)*speed*wordScale.x;p.vy+=Math.sin(angle)*speed*wordScale.y;});
+  particles.forEach(p=>{p.sx=p.x;p.sy=p.y;p.vx=p.vy=0;p.endX=limits.left+1+Math.random()*(limits.right-limits.left-2);p.endY=limits.top+1+Math.random()*(limits.bottom-limits.top-2);});
  }
  let lastScrollY=window.scrollY,pendingScroll=0;
  const pointer={x:-500,y:-500};
@@ -53,21 +52,20 @@ if(ctx){
   if(touch){touch-=dt*1000;if(touch<=0)deactivatePointer();}
   pointerWeight=Math.max(0,Math.min(1,pointerWeight+(pointerActive?1:-1)*dt/.15));
   if(phase==='hold'){
-   if(pointerActive)hold=0;else hold+=dt*1000;
+   hold+=dt*1000;
    if(hold>=5000)scatter((word+1)%words.length);
   }else{
    elapsed+=dt*1000;
-   if(phase==='scatter'&&elapsed>=900){word=nextWord;assign();phase='assemble';elapsed=0;}
-   else if(phase==='assemble'&&elapsed>=1800){phase='hold';elapsed=0;hold=0;}
+   if(phase==='scatter'&&elapsed>=1400){word=nextWord;assign();particles.forEach(p=>{p.sx=p.x;p.sy=p.y;p.endX=p.baseX;p.endY=p.baseY;});phase='assemble';elapsed=0;}
+   else if(phase==='assemble'&&elapsed>=3000){phase='hold';elapsed=0;hold=0;}
   }
-  particles.forEach((p,i)=>stepLetterParticle(p,{phase,elapsed,pointer,pointerWeight,limits,index:i},dt));
+  particles.forEach((p,i)=>{if(phase==='hold')stepLetterParticle(p,{phase,elapsed,pointer,pointerWeight,limits,index:i},dt);else stepLetterTransition(p,elapsed,phase==='scatter'?1400:3000);});
  }
  function tick(now:number){
   frame=0;if(!allowed()){stop();return;}
   const ms=last?Math.min(50,Math.max(0,now-last)):0;last=now;
   const scrollImpulse=Math.max(-1.4,Math.min(1.4,pendingScroll*.018));pendingScroll=0;
-  if(scrollImpulse){
-   hold=0;
+  if(scrollImpulse&&phase==='hold'){
    particles.forEach((p,i)=>{const weight=.65+.35*(.5+.5*Math.sin(i*2.399));p.vy+=scrollImpulse*60*weight;p.vx+=scrollImpulse*60*Math.sin(i*1.618)*.14;});
   }
   advanceClock(clock,ms,simulate);
@@ -83,9 +81,8 @@ if(ctx){
   const span=root.querySelector<HTMLElement>('.motion-documented')!,rect=span.getBoundingClientRect(),css=getComputedStyle(span);
   const cx=rect.left-bounds.left+rect.width/2,cy=rect.top-bounds.top+rect.height/2;
   const previousCenter={x:(limits.left+limits.right)/2,y:(limits.bottom+limits.top)/2};
-  limits={left:cx-1.5*rect.width,right:cx+1.5*rect.width,bottom:cy+1.5*rect.height,top:cy-1.5*rect.height};
-  if(particles.length)particles.forEach(p=>{p.x+=cx-previousCenter.x;p.y+=cy-previousCenter.y;});
-  wordScale={x:rect.width,y:rect.height};
+  limits={left:cx-rect.width/2-16,right:cx+rect.width/2+16,bottom:cy+rect.height/2+16,top:cy-rect.height/2-16};
+  if(particles.length)particles.forEach(p=>{const dx=cx-previousCenter.x,dy=cy-previousCenter.y;p.x+=dx;p.y+=dy;p.sx+=dx;p.sy+=dy;p.endX+=dx;p.endY+=dy;for(const key of ['x','sx','endX'] as const)p[key]=Math.max(limits.left+1,Math.min(limits.right-1,p[key]));for(const key of ['y','sy','endY'] as const)p[key]=Math.max(limits.top+1,Math.min(limits.bottom-1,p[key]));});
   const masks=words.map(text=>{
    ink.clearRect(0,0,mask.width,mask.height);
    ink.font=`${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;ink.textBaseline='alphabetic';
@@ -108,8 +105,8 @@ if(ctx){
   }while(gap<20);
   const count=Math.min(budget,Math.max(1500,...targets.map(t=>t.length)));
   const old=particles;
-  if(old.length!==count)particles=Array.from({length:count},(_,i)=>old.length?{...old[Math.floor(i*old.length/count)]}:{x:0,y:0,baseX:0,baseY:0,vx:0,vy:0});
-  refreshColor();assign();if(!old.length||reduced.matches)home();else draw();box.dataset.ready='true';wake();
+  if(old.length!==count)particles=Array.from({length:count},(_,i)=>old.length?{...old[Math.floor(i*old.length/count)]}:{x:0,y:0,baseX:0,baseY:0,vx:0,vy:0,sx:0,sy:0,endX:0,endY:0});
+  refreshColor();assign();if(phase==='assemble')particles.forEach(p=>{p.endX=p.baseX;p.endY=p.baseY;});if(phase==='scatter')particles.forEach(p=>{p.endX=Math.max(limits.left+1,Math.min(limits.right-1,p.endX));p.endY=Math.max(limits.top+1,Math.min(limits.bottom-1,p.endY));});if(!old.length||reduced.matches)home();else draw();box.dataset.ready='true';wake();
  }
  function deactivatePointer(){pointerActive=false;touch=0;}
  document.addEventListener('pointermove',e=>{if(!allowed()||e.pointerType==='touch')return;const hit=box.getBoundingClientRect();if(e.clientX<hit.left-60||e.clientX>hit.right+60||e.clientY<hit.top-60||e.clientY>hit.bottom+60){deactivatePointer();return;}const r=canvas.getBoundingClientRect();pointer.x=e.clientX-r.left;pointer.y=e.clientY-r.top;pointerActive=true;wake();});
@@ -120,7 +117,7 @@ if(ctx){
   const y=window.scrollY,delta=y-lastScrollY;lastScrollY=y;
   const shift=-delta;
   limits.top+=shift;limits.bottom+=shift;
-  particles.forEach(p=>{p.y+=shift;p.baseY+=shift;});
+  particles.forEach(p=>{p.y+=shift;p.baseY+=shift;p.sy+=shift;p.endY+=shift;});
   targets.forEach(coords=>coords.forEach(p=>{p.y+=shift;}));
   if(ready)draw();
   deactivatePointer();

@@ -9,15 +9,15 @@ for(const width of [1440,390,320])for(const theme of ['light','dark'])test(`scat
  const initial=await page.locator('.journal-heading').boundingBox();
  const capture=async(name:string)=>page.screenshot({path:`.impeccable/review/letter-${width}-${theme}-${name}.png`});
  await capture('hold');await page.clock.runFor(5200);await expect(box).toHaveAttribute('data-phase','scatter');await capture('scatter');
- await page.clock.runFor(1000);await expect(box).toHaveAttribute('data-phase','assemble');await capture('gather');
- await page.clock.runFor(1700);await expect(box).toHaveAttribute('data-phase','hold');await expect(box).toHaveAttribute('data-word','explored.');await capture('settled');
+ await page.clock.runFor(1300);await expect(box).toHaveAttribute('data-phase','assemble');await capture('gather');
+ await page.clock.runFor(3000);await expect(box).toHaveAttribute('data-phase','hold');await expect(box).toHaveAttribute('data-word','explored.');await capture('settled');
  expect(await page.locator('.journal-heading').boundingBox()).toEqual(initial);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  expect(errors).toEqual([]);
 });
 test('resize and pointer input interrupt assembly without resetting the word or phase',async({page})=>{
  await page.clock.install();await page.goto('/projects');const box=page.locator('.dynamic-particles');await expect(box).toHaveAttribute('data-ready','true');
- await page.clock.runFor(6200);await expect(box).toHaveAttribute('data-phase','assemble');
+ await page.clock.runFor(6700);await expect(box).toHaveAttribute('data-phase','assemble');
  await page.setViewportSize({width:390,height:844});await page.clock.runFor(100);
  await expect(box).toHaveAttribute('data-phase','assemble');await expect(box).toHaveAttribute('data-word','explored.');
  const word=(await page.locator('.motion-documented').boundingBox())!;

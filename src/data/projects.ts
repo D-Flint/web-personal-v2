@@ -36,11 +36,11 @@ export const projects: Project[] = [
   {
     num: '04',
     title: 'AI Models Finder',
-    description: 'A website that help none technical people understand, find and pick the right AI Models for their needs.',
+    description: 'A website that helps nontechnical people understand, find, and choose AI models for their needs.',
     tags: ['React', 'TypeScript', 'Astro', 'API', 'Algorithm', 'Vite'],
     domain: 'web',
     domainLabel: 'Full-Stack & Web',
-    features: ['Models ranking base on Verify benchmark score', 'Verify and Reliable benchmark score from multiple source', 'Cover multiple metric, use casese and requirment', 'Models recommendation algorithm base on the user needs'],
+    features: ['Model rankings based on verified benchmark scores', 'Verified benchmark scores from multiple sources', 'Coverage of multiple metrics, use cases, and requirements', 'Model recommendation algorithm based on user needs'],
   },
   {
     num: '05',

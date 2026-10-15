@@ -42,7 +42,7 @@ if(ctx){
       points.forEach((p,i)=>{p.x=p.sx+(ends[i].x-p.sx)*ease;p.y=p.sy+(ends[i].y-p.sy)*ease;});
       if(t===1){if(phase==='scatter')begin(next);else{phase='hold';hold=0;}}
     }else{
-      if(pointer.active)hold=0;else hold+=ms;
+      hold+=ms;
       const dt=Math.min(2,ms/16.67);
       points.forEach((p,i)=>{
         const target=targets[word][i],dx=p.x-pointer.x,dy=p.y-pointer.y,d=Math.hypot(dx,dy);
@@ -50,7 +50,7 @@ if(ctx){
         p.vx=(p.vx+(target.x-p.x)*.018*dt)*Math.pow(.84,dt);p.vy=(p.vy+(target.y-p.y)*.018*dt)*Math.pow(.84,dt);
         p.x=clamp(p.x+p.vx*dt,width);p.y=clamp(p.y+p.vy*dt,height);
       });
-      if(!pointer.active&&hold>=3000)begin((word+1)%words.length,true);
+      if(hold>=3000)begin((word+1)%words.length,true);
     }
     draw();if(!frame)frame=requestAnimationFrame(tick);canvas.dataset.animating='true';
   }
@@ -101,9 +101,9 @@ if(ctx){
   function scatter(){if(!allowed())return;pointer.active=false;begin(word,true);}
   canvas.addEventListener('pointermove',event=>{
     if(!allowed()||event.pointerType==='touch')return;
-    const rect=canvas.getBoundingClientRect();pointer.x=event.clientX-rect.left;pointer.y=event.clientY-rect.top;pointer.active=true;hold=0;
+    const rect=canvas.getBoundingClientRect();pointer.x=event.clientX-rect.left;pointer.y=event.clientY-rect.top;pointer.active=true;
   });
-  canvas.addEventListener('pointerleave',()=>{pointer.active=false;hold=0;});
+  canvas.addEventListener('pointerleave',()=>{pointer.active=false;});
   canvas.addEventListener('pointerdown',scatter,{passive:true});
   new ResizeObserver(resize).observe(canvas);
   new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(!visible)pointer.active=false;wake();}).observe(canvas);

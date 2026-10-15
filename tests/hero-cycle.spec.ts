@@ -19,14 +19,19 @@ for(const width of [1440,390,320])test(`wordmark scatters and reforms at ${width
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`.impeccable/review/hero-cycle-${width}.png`});expect(errors).toEqual([]);
 });
-test('automatic cycle, pointer delay, resize, suspension and reduced motion',async({page})=>{
+test('automatic cycle, uninterrupted hover, resize, suspension and reduced motion',async({page})=>{
   await page.clock.install();await page.goto('/');const canvas=page.locator('#hero-particles');await expect(canvas).toHaveAttribute('data-ready','true');await page.clock.runFor(3100);
   await page.clock.fastForward(3100);await page.clock.runFor(100);
   await page.clock.runFor(4500);
   await expect(page.locator('.hero-animation-controls')).toHaveCount(0);
   await page.setViewportSize({width:320,height:844});await page.clock.runFor(50);
-  await canvas.hover();await page.clock.fastForward(8000);await expect(canvas).toHaveAttribute('data-word','DECODE');
-  await page.mouse.move(0,0);await page.clock.runFor(2800);await expect(canvas).toHaveAttribute('data-phase','hold');
+  await canvas.hover();await page.clock.runFor(7400);
+  await expect(canvas).toHaveAttribute('data-word','FORGE');await expect(canvas).toHaveAttribute('data-phase','hold');
+  const rect=await canvas.boundingBox();
+  for(let i=0;i<4;i++){await page.mouse.move(rect!.x+rect!.width*(.3+i*.1),rect!.y+rect!.height/2);await page.clock.runFor(500);}
+  await page.mouse.move(0,0);await page.clock.runFor(1100);
+  await expect(canvas).toHaveAttribute('data-phase','scatter');
+  await page.clock.runFor(4400);await expect(canvas).toHaveAttribute('data-word','BREAK');
   await page.locator('#contact').scrollIntoViewIfNeeded();await page.clock.runFor(100);await expect(canvas).toHaveAttribute('data-running','false');
   const word=await canvas.getAttribute('data-word');await page.clock.fastForward(20000);await expect(canvas).toHaveAttribute('data-word',word);
   await canvas.scrollIntoViewIfNeeded();await page.clock.runFor(1500);

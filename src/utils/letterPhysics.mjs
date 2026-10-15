@@ -57,3 +57,12 @@ function spatialOrder(points) {
   return points.map(p=>({p,key:spread(Math.round((p.x-left)/width*255))|(spread(Math.round((p.y-top)/height*255))<<1)}))
     .sort((a,b)=>a.key-b.key).map(item=>item.p);
 }
+
+// Hero-style cubic ease-out; springs remain active during readable holds.
+export function stepLetterTransition(p, elapsed, duration) {
+  const t = Math.max(0, Math.min(1, elapsed / duration));
+  const ease = 1 - Math.pow(1 - t, 3);
+  p.x = p.sx + (p.endX - p.sx) * ease;
+  p.y = p.sy + (p.endY - p.sy) * ease;
+  p.vx = p.vy = 0;
+}
