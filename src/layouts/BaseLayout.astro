@@ -2,7 +2,7 @@
 import '../styles/global.css';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
-import NekoWidget from '../components/NekoWidget.astro';
+import PortfolioAssistant from '../components/PortfolioAssistant.astro';
 import ProjectModal from '../components/ProjectModal.astro';
 import DraftingField from '../components/DraftingField.astro';
 import ScrollDrafting from '../components/ScrollDrafting.astro';
@@ -52,7 +52,7 @@ const { title = 'Hoeurb Vuthi — Engineering Field Journal', description = 'Eng
 <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
 <meta property="og:title" content={title}/><meta property="og:description" content={description}/><meta property="og:type" content="website"/>
 </head>
-<body><a class="skip" href="#main">Skip to content</a><DraftingField/><Navbar/><main id="main" class="wrap"><slot/></main><Footer/><ProjectModal/><NekoWidget/><ScrollDrafting/><script>
+<body><a class="skip" href="#main">Skip to content</a><DraftingField/><Navbar/><main id="main" class="wrap"><slot/></main><Footer/><ProjectModal/><PortfolioAssistant/><ScrollDrafting/><script>
 // Native modal semantics plus explicit Tab cycling avoid focus moving to browser chrome.
 document.querySelectorAll<HTMLDialogElement>('dialog').forEach(dialog=>dialog.addEventListener('keydown',event=>{
   if(event.key!=='Tab')return;
