@@ -1,14 +1,23 @@
 <div class="hero-pixel-field" data-hero-field>
-  <div class="hero-pixel-fallback" aria-hidden="true">VUTHI</div>
+  <div class="hero-pixel-fallback" aria-hidden="true">OBSERVE</div>
   <canvas id="hero-particles" aria-hidden="true"></canvas>
-  <div class="hero-field-caption"><span>Hoeurb Vuthi · Engineering field journal</span></div>
+  <div class="hero-field-caption"><span id="hero-field-note">Observe — Study how the system behaves</span><span id="hero-field-step" class="technical">01 / 05</span></div>
 </div>
 <script>
 const canvas=document.querySelector<HTMLCanvasElement>('#hero-particles')!;
+const noteEl=document.querySelector<HTMLElement>('#hero-field-note');
+const stepEl=document.querySelector<HTMLElement>('#hero-field-step');
 const ctx=canvas.getContext('2d');
 if(ctx){
   const reduce=matchMedia('(prefers-reduced-motion: reduce)');
-  const words=['PROBE','DECODE','FORGE','BREAK','MASTER'];
+  const words=['OBSERVE','DISSECT','DRAFT','TEMPER','CRAFT'];
+  const notes=[
+    'Observe — Study how the system behaves',
+    'Dissect — Take the mechanism apart',
+    'Draft — Map the architecture from within',
+    'Temper — Stress-test every edge and seam',
+    'Craft — Shape fast, deliberate software'
+  ];
   type Target={x:number;y:number};
   type Point=Target & {sx:number;sy:number;vx:number;vy:number};
   let points:Point[]=[],targets:Target[][]=[],width=0,height=0,frame=0,last=0,visible=true,ready=false;
@@ -17,15 +26,19 @@ if(ctx){
   const allowed=()=>ready&&visible&&!document.hidden&&!reduce.matches;
   const clamp=(v:number,max:number)=>Math.max(particleSize/2,Math.min(max-particleSize/2,v));
   const random=()=>({x:particleSize/2+Math.random()*(width-particleSize),y:particleSize/2+Math.random()*(height-particleSize)});
+  function syncCaption(){
+    if(noteEl)noteEl.textContent=notes[word];
+    if(stepEl)stepEl.textContent=`0${word+1} / 0${words.length}`;
+  }
   function draw(){
     ctx!.clearRect(0,0,width,height);ctx!.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     for(const p of points){ctx!.beginPath();ctx!.arc(p.x,p.y,particleSize/2,0,Math.PI*2);ctx!.fill();}
-    canvas.dataset.word=words[word];canvas.dataset.phase=phase;
+    canvas.dataset.word=words[word];canvas.dataset.phase=phase;syncCaption();
   }
   document.addEventListener('theme-change',()=>{if(ready)draw();});
   function begin(index:number,scatter=false){
     next=index;elapsed=0;hold=0;phase=scatter?'scatter':'assemble';
-    if(!scatter)word=index;
+    if(!scatter){word=index;syncCaption();}
     points.forEach(p=>{p.sx=p.x;p.sy=p.y;p.vx=p.vy=0;});
     if(scatter)destinations=points.map(random);
     wake();

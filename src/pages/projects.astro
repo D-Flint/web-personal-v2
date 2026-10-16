@@ -5,7 +5,7 @@ import ProjectFigure from '../components/ProjectFigure.astro';
 import Arrow from '../components/Arrow.astro';
 import { projects } from '../data/projects';
 const studies: Record<string,string> = {'01':'agent','02':'web','03':'tools','04':'finder'};
-const categories = [['all','All projects'],['systems','Systems & C++'],['web','Web applications'],['ai','AI & learning'],['tools','CLI & tools']];
+const categories = [['all','All projects'],['web','Web applications'],['ai','AI & learning'],['tools','CLI & tools']];
 const tags = [...new Set(projects.flatMap(p => p.tags))].sort();
 ---
 <BaseLayout title="Projects — Hoeurb Vuthi">
