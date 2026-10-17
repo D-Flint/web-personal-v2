@@ -52,19 +52,19 @@ try {
   hasError = true;
 }
 
-// Gate 2: Invariant Check for NekoWidget.astro
-logInfo('Gate 2: Verifying NekoWidget inner flex wrapper invariant (Rule 2)...');
-const nekoPath = path.join(ROOT, 'src', 'components', 'NekoWidget.astro');
+// Gate 2: Invariant Check for PortfolioAssistant.astro
+logInfo('Gate 2: Verifying PortfolioAssistant inner flex wrapper invariant (Rule 2)...');
+const nekoPath = path.join(ROOT, 'src', 'components', 'PortfolioAssistant.astro');
 if (fs.existsSync(nekoPath)) {
   const nekoContent = fs.readFileSync(nekoPath, 'utf8');
   if (nekoContent.includes('flex h-full min-h-0 flex-col overflow-hidden')) {
-    logPass('NekoWidget inner flex wrapper invariant is intact.');
+    logPass('PortfolioAssistant inner flex wrapper invariant is intact.');
   } else {
-    logFail('Rule 2 violation: Missing `flex h-full min-h-0 flex-col overflow-hidden` in NekoWidget.astro.');
+    logFail('Rule 2 violation: Missing `flex h-full min-h-0 flex-col overflow-hidden` in PortfolioAssistant.astro.');
     hasError = true;
   }
 } else {
-  logFail('NekoWidget.astro does not exist at expected location.');
+  logFail('PortfolioAssistant.astro does not exist at expected location.');
   hasError = true;
 }
 

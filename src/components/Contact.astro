@@ -1,46 +1,256 @@
 ---
 import Arrow from './Arrow.astro';
-const accessKey = import.meta.env.PUBLIC_WEB3FORMS_ACCESS_KEY || 'ada9f474-2acc-420f-a1df-f88706245294';
+const accessKey =
+  import.meta.env.PUBLIC_WEB3FORMS_ACCESS_KEY || 'ada9f474-2acc-420f-a1df-f88706245294';
 ---
-<section id="contact" class="section contact-section" aria-labelledby="contact-title"><div><h2 id="contact-title"><span class="sr-only">Let’s build something useful.</span><span aria-hidden="true">Let’s build<br/>something<span class="contact-ending"><span class="contact-ending-space">worth sharing.</span><span class="contact-typed">useful.</span></span></span></h2><p class="contact-intro">Have a project in mind, a question about my work, or an interesting problem? I’d like to hear it.</p><a class="email-link" href="mailto:vuthihoeurb@gmail.com">vuthihoeurb@gmail.com</a><div class="contact-links"><a href="https://github.com/D-Flint" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens a new tab)</span></a><a href="https://linkedin.com/in/hoeurbvuthi" target="_blank" rel="noopener noreferrer">LinkedIn<span class="sr-only"> (opens a new tab)</span></a></div></div><form id="contact-form" data-access-key={accessKey} novalidate><div class="form-grid"><div class="field"><label for="contact-name">Your name</label><input id="contact-name" name="name" autocomplete="name" maxlength="100" required placeholder="Name" aria-describedby="name-error"/><p class="field-error" id="name-error"></p></div><div class="field"><label for="contact-email">Email address</label><input id="contact-email" name="email" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com" aria-describedby="email-error"/><p class="field-error" id="email-error"></p></div><div class="field full"><label for="contact-subject">What’s on your mind?</label><input id="contact-subject" name="subject" maxlength="150" required placeholder="A project, a collaboration, a question…" aria-describedby="subject-error"/><p class="field-error" id="subject-error"></p></div><div class="field"><label for="contact-message">Message</label><textarea id="contact-message" name="message" minlength="10" maxlength="5000" required placeholder="Tell me a little about it." aria-describedby="message-error"></textarea><p class="field-error" id="message-error"></p></div></div><input class="honeypot" type="checkbox" name="botcheck" tabindex="-1" aria-hidden="true"/><div class="form-actions"><button id="contact-send" class="button" type="submit">Send message <Arrow/></button><p class="small muted">Delivered through Web3Forms.</p></div><p id="contact-status" class="form-status" role="status" aria-live="polite"></p></form></section>
+
+<section id="contact" class="section contact-section" aria-labelledby="contact-title">
+  <!-- The screen-reader heading stays stable while the visible ending is animated. -->
+  <div>
+    <h2 id="contact-title">
+      <span class="sr-only">Let’s build something useful.</span>
+      <span aria-hidden="true">
+        Let’s build<br />something<span class="contact-ending">
+          <span class="contact-ending-space">worth sharing.</span>
+          <span class="contact-typed">useful.</span>
+        </span>
+      </span>
+    </h2>
+    <p class="contact-intro">
+      Have a project in mind, a question about my work, or an interesting problem? I’d like to hear
+      it.
+    </p>
+    <a class="email-link" href="mailto:vuthihoeurb@gmail.com">vuthihoeurb@gmail.com</a>
+    <div class="contact-links">
+      <a href="https://github.com/D-Flint" target="_blank" rel="noopener noreferrer">
+        GitHub<span class="sr-only"> (opens a new tab)</span>
+      </a>
+      <a href="https://linkedin.com/in/hoeurbvuthi" target="_blank" rel="noopener noreferrer">
+        LinkedIn<span class="sr-only"> (opens a new tab)</span>
+      </a>
+    </div>
+  </div>
+  <!-- JavaScript validates inline; failed delivery leaves every field intact. -->
+  <form id="contact-form" data-access-key={accessKey} novalidate>
+    <div class="form-grid">
+      <div class="field">
+        <label for="contact-name">Your name</label>
+        <input
+          id="contact-name"
+          name="name"
+          autocomplete="name"
+          maxlength="100"
+          required
+          placeholder="Name"
+          aria-describedby="name-error"
+        />
+        <p class="field-error" id="name-error"></p>
+      </div>
+      <div class="field">
+        <label for="contact-email">Email address</label>
+        <input
+          id="contact-email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          maxlength="254"
+          required
+          placeholder="you@example.com"
+          aria-describedby="email-error"
+        />
+        <p class="field-error" id="email-error"></p>
+      </div>
+      <div class="field full">
+        <label for="contact-subject">What’s on your mind?</label>
+        <input
+          id="contact-subject"
+          name="subject"
+          maxlength="150"
+          required
+          placeholder="A project, a collaboration, a question…"
+          aria-describedby="subject-error"
+        />
+        <p class="field-error" id="subject-error"></p>
+      </div>
+      <div class="field">
+        <label for="contact-message">Message</label>
+        <textarea
+          id="contact-message"
+          name="message"
+          minlength="10"
+          maxlength="5000"
+          required
+          placeholder="Tell me a little about it."
+          aria-describedby="message-error"
+        ></textarea>
+        <p class="field-error" id="message-error"></p>
+      </div>
+    </div>
+    <input class="honeypot" type="checkbox" name="botcheck" tabindex="-1" aria-hidden="true" />
+    <div class="form-actions">
+      <button id="contact-send" class="button" type="submit">Send message <Arrow /> </button>
+      <p class="small muted">Delivered through Web3Forms.</p>
+    </div>
+    <p id="contact-status" class="form-status" role="status" aria-live="polite"></p>
+  </form>
+</section>
 <script>
-const form=document.querySelector<HTMLFormElement>('#contact-form')!;
-const status=document.querySelector<HTMLElement>('#contact-status')!;
-const submit=document.querySelector<HTMLButtonElement>('#contact-send')!;
-const section=document.querySelector<HTMLElement>('#contact')!;
-const typed=section.querySelector<HTMLElement>('.contact-typed')!;
-const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const words=['useful.','unexpected.','delightful.','bold.','worth sharing.'];
-let index=0,phase:'hold'|'erase'|'wait'|'type'='hold',timer:ReturnType<typeof setTimeout>|undefined;
-let visible=false,formFocused=false;
-const running=()=>visible&&!document.hidden&&!formFocused&&!reduced.matches;
-function delay(){return phase==='hold'?2500:phase==='erase'?45:phase==='wait'?250:90;}
-function schedule(){clearTimeout(timer);section.dataset.typing=String(running());if(running())timer=setTimeout(step,delay());}
-function step(){
- if(!running())return;
- if(phase==='hold')phase='erase';
- if(phase==='erase'){
-  typed.textContent=typed.textContent!.slice(0,-1);
-  if(!typed.textContent)phase='wait';
- }else if(phase==='wait'){
-  index=(index+1)%words.length;phase='type';
- }else if(phase==='type'){
-  typed.textContent=words[index].slice(0,typed.textContent!.length+1);
-  if(typed.textContent===words[index])phase='hold';
- }
- schedule();
-}
-function complete(){typed.textContent=words[index];phase='hold';}
-form.addEventListener('focusin',()=>{formFocused=true;complete();schedule();});
-form.addEventListener('focusout',()=>queueMicrotask(()=>{formFocused=form.contains(document.activeElement);schedule();}));
-document.addEventListener('visibilitychange',schedule);
-new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;schedule();}).observe(section.querySelector('#contact-title')!);
-function preference(){
- if(reduced.matches){index=0;complete();}schedule();
-}
-reduced.addEventListener('change',preference);preference();
-const fields=['name','email','subject','message'].map(name=>form.elements.namedItem(name) as HTMLInputElement|HTMLTextAreaElement);
-function validate(field:HTMLInputElement|HTMLTextAreaElement){const value=field.value.trim();let message='';if(!value)message=`Please enter your ${field.name==='subject'?'subject':field.name}.`;else if(field.name==='email'&&!field.validity.valid)message='Enter a valid email address.';else if(field.name==='message'&&value.length<10)message='Please write at least 10 characters.';field.setAttribute('aria-invalid',String(!!message));document.querySelector(`#${field.name}-error`)!.textContent=message;return !message;}
-fields.forEach(field=>{field.addEventListener('blur',()=>{if(field.value||field.getAttribute('aria-invalid')==='true')validate(field);});field.addEventListener('input',()=>{if(field.getAttribute('aria-invalid')==='true')validate(field);});});
-form.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;const valid=fields.map(validate);if(valid.includes(false)){fields[valid.indexOf(false)].focus();status.textContent='Please check the highlighted fields.';status.dataset.state='error';return;}submit.disabled=true;submit.textContent='Sending…';form.setAttribute('aria-busy','true');status.dataset.state='pending';status.textContent='Sending your message…';try{const body=Object.fromEntries(new FormData(form));body.access_key=form.dataset.accessKey!;if(!body.botcheck)delete body.botcheck;const response=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});const result=await response.json();if(!response.ok||result.success!==true)throw new Error('Delivery failed');status.dataset.state='success';status.textContent='Your message was sent successfully. Thank you for getting in touch.';form.reset();fields.forEach(field=>field.removeAttribute('aria-invalid'));}catch{status.dataset.state='error';status.textContent='Your message wasn’t sent. Your text is saved here; try again, or email vuthihoeurb@gmail.com.';}finally{submit.disabled=false;submit.textContent='Send message';form.removeAttribute('aria-busy');}});
+  // The heading animation and the delivery form are independent flows.
+  // Typing pauses during editing; delivery clears the draft only after provider success.
+
+  // 1. Find the form controls and heading animation elements.
+  const form = document.querySelector<HTMLFormElement>('#contact-form')!;
+  const status = document.querySelector<HTMLElement>('#contact-status')!;
+  const submit = document.querySelector<HTMLButtonElement>('#contact-send')!;
+  const section = document.querySelector<HTMLElement>('#contact')!;
+  const typed = section.querySelector<HTMLElement>('.contact-typed')!;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // 2. Animate one ending at a time: hold → erase → wait → type.
+  // Timers run only while the heading is visible and the visitor is not editing.
+  const words = ['useful.', 'unexpected.', 'delightful.', 'bold.', 'worth sharing.'];
+  let index = 0,
+    phase: 'hold' | 'erase' | 'wait' | 'type' = 'hold',
+    timer: ReturnType<typeof setTimeout> | undefined;
+  let visible = false,
+    formFocused = false;
+  // Pause decorative typing while the form has focus, offscreen, or motion is reduced.
+  const canAnimateHeading = () => visible && !document.hidden && !formFocused && !reduced.matches;
+  function typingDelayMs() {
+    const phaseDelays = { hold: 2500, erase: 45, wait: 250, type: 90 };
+    return phaseDelays[phase];
+  }
+  function scheduleTypingStep() {
+    clearTimeout(timer);
+    section.dataset.typing = String(canAnimateHeading());
+    if (canAnimateHeading()) timer = setTimeout(advanceTypingPhase, typingDelayMs());
+  }
+  // Cycle through hold → erase → wait → type, keeping one timer active.
+  function advanceTypingPhase() {
+    if (!canAnimateHeading()) return;
+    if (phase === 'hold') phase = 'erase';
+    if (phase === 'erase') {
+      typed.textContent = typed.textContent!.slice(0, -1);
+      if (!typed.textContent) phase = 'wait';
+    } else if (phase === 'wait') {
+      index = (index + 1) % words.length;
+      phase = 'type';
+    } else if (phase === 'type') {
+      typed.textContent = words[index].slice(0, typed.textContent!.length + 1);
+      if (typed.textContent === words[index]) phase = 'hold';
+    }
+    scheduleTypingStep();
+  }
+  function finishCurrentWord() {
+    typed.textContent = words[index];
+    phase = 'hold';
+  }
+  form.addEventListener('focusin', () => {
+    formFocused = true;
+    finishCurrentWord();
+    scheduleTypingStep();
+  });
+  form.addEventListener('focusout', () =>
+    queueMicrotask(() => {
+      formFocused = form.contains(document.activeElement);
+      scheduleTypingStep();
+    }),
+  );
+  document.addEventListener('visibilitychange', scheduleTypingStep);
+  new IntersectionObserver((entries) => {
+    visible = entries[0].isIntersecting;
+    scheduleTypingStep();
+  }).observe(section.querySelector('#contact-title')!);
+  function applyMotionPreference() {
+    if (reduced.matches) {
+      index = 0;
+      finishCurrentWord();
+    }
+    scheduleTypingStep();
+  }
+  reduced.addEventListener('change', applyMotionPreference);
+  applyMotionPreference();
+
+  // 3. Validate each field and put its message beside the matching input.
+  // Recheck an invalid field while typing so errors disappear as they are corrected.
+  const fields = ['name', 'email', 'subject', 'message'].map(
+    (name) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement,
+  );
+  function validateField(field: HTMLInputElement | HTMLTextAreaElement) {
+    const value = field.value.trim();
+    let message = '';
+    if (!value) message = `Please enter your ${field.name === 'subject' ? 'subject' : field.name}.`;
+    else if (field.name === 'email' && !field.validity.valid)
+      message = 'Enter a valid email address.';
+    else if (field.name === 'message' && value.length < 10)
+      message = 'Please write at least 10 characters.';
+    field.setAttribute('aria-invalid', String(!!message));
+    document.querySelector(`#${field.name}-error`)!.textContent = message;
+    return !message;
+  }
+  fields.forEach((field) => {
+    field.addEventListener('blur', () => {
+      if (field.value || field.getAttribute('aria-invalid') === 'true') validateField(field);
+    });
+    field.addEventListener('input', () => {
+      if (field.getAttribute('aria-invalid') === 'true') validateField(field);
+    });
+  });
+  // 4. Send the validated draft. The provider's JSON success flag is required;
+  // an HTTP 200 alone does not prove that it accepted the message.
+  async function deliverMessage() {
+    const body = Object.fromEntries(new FormData(form));
+    body.access_key = form.dataset.accessKey!;
+    // The honeypot must be absent when empty; a checked value identifies bots.
+    if (!body.botcheck) delete body.botcheck;
+    const response = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+    const result = await response.json();
+    if (!response.ok || result.success !== true) throw new Error('Delivery failed');
+  }
+
+  function setDeliveryPending(pending: boolean) {
+    submit.disabled = pending;
+    submit.textContent = pending ? 'Sending…' : 'Send message';
+    if (pending) form.setAttribute('aria-busy', 'true');
+    else form.removeAttribute('aria-busy');
+  }
+
+  async function handleSubmit(event: SubmitEvent) {
+    event.preventDefault();
+    if (submit.disabled) return;
+
+    // Validate every field before focusing the first error, so all messages appear together.
+    const valid = fields.map(validateField);
+    if (valid.includes(false)) {
+      fields[valid.indexOf(false)].focus();
+      status.textContent = 'Please check the highlighted fields.';
+      status.dataset.state = 'error';
+      return;
+    }
+
+    setDeliveryPending(true);
+    status.dataset.state = 'pending';
+    status.textContent = 'Sending your message…';
+    try {
+      await deliverMessage();
+      status.dataset.state = 'success';
+      status.textContent = 'Your message was sent successfully. Thank you for getting in touch.';
+      form.reset();
+      fields.forEach((field) => field.removeAttribute('aria-invalid'));
+    } catch {
+      // Keep every input value available for another attempt or copying into an email.
+      status.dataset.state = 'error';
+      status.textContent =
+        'Your message wasn’t sent. Your text is saved here; try again, or email vuthihoeurb@gmail.com.';
+    } finally {
+      setDeliveryPending(false);
+    }
+  }
+
+  form.addEventListener('submit', handleSubmit);
 </script>

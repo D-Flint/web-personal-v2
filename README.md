@@ -75,7 +75,7 @@ docs/assets/        README artwork
 | [Project journal](src/pages/projects.astro) | Search, filters, and project records |
 | [Theme](src/styles/global.css) | Paper, ink, cobalt, and typography |
 | [Drafting field](src/components/DraftingField.astro) | Interactive desktop objects |
-| [Assistant](src/components/NekoWidget.astro) | Chat interface |
+| [Assistant](src/components/PortfolioAssistant.astro) | Chat interface |
 | [Chat endpoint](src/pages/api/chat.ts) | Provider integration and request limits |
 
 ## Verification

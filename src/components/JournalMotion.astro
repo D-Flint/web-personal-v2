@@ -2,24 +2,46 @@
 import Arrow from './Arrow.astro';
 import DynamicTextParticles from './DynamicTextParticles.astro';
 ---
+
 <div class="journal-motion">
   <section class="journal-heading">
     <div class="motion-heading">
       <div class="motion-lettering">
-        <h1><span>Work,</span><br/><em class="motion-documented">documented.</em></h1>
-        <div class="motion-dynamic"><DynamicTextParticles/></div>
+        <h1>
+          <span>Work,</span>
+          <br />
+          <em class="motion-documented">documented.</em>
+        </h1>
+        <div class="motion-dynamic">
+          <DynamicTextParticles />
+        </div>
       </div>
     </div>
     <div>
-      <p>From a first C++ program to systems that work in the background. A growing journal of applications, tools, and technical studies.</p>
-      <a class="text-link" href="/#work">Back to selected work <Arrow/></a>
+      <p>
+        From a first C++ program to systems that work in the background. A growing journal of
+        applications, tools, and technical studies.
+      </p>
+      <a class="text-link" href="/#work">Back to selected work <Arrow /> </a>
     </div>
   </section>
 </div>
 <style>
-.motion-heading{min-width:0}
-.motion-lettering{position:relative;isolation:isolate}
-.motion-lettering h1{margin:0}
-.motion-dynamic{position:absolute;inset:0}
-.journal-motion:has(:global(.dynamic-particles[data-ready=true])) .motion-documented{color:transparent}
+  .motion-heading {
+    min-width: 0;
+  }
+  .motion-lettering {
+    position: relative;
+    isolation: isolate;
+  }
+  .motion-lettering h1 {
+    margin: 0;
+  }
+  .motion-dynamic {
+    position: absolute;
+    inset: 0;
+  }
+  .journal-motion:has(:global(.dynamic-particles[data-ready='true'])) .motion-documented {
+    color: transparent;
+  }
 </style>

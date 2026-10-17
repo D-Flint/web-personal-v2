@@ -1,4 +1,5 @@
 export type Point = { x: number; y: number };
+/** Route an orthogonal SVG connector through the midpoint of the chosen starting axis. */
 export function wirePath(from: Point, to: Point, axis = 'x') {
   if (axis === 'y') {
     const mid = (from.y + to.y) / 2;

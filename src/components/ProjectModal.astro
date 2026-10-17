@@ -1,14 +1,100 @@
 ---
 import { projects } from '../data/projects';
 ---
-<dialog id="project-dialog" class="detail-dialog" aria-labelledby="detail-title"><div class="dialog-top"><button class="icon-button" id="detail-close" aria-label="Close project details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><h2 id="detail-title"></h2><p class="small muted" id="detail-domain"></p><p id="detail-description"></p><div id="detail-tags" class="tags"></div><h3>Inside the project</h3><ul id="detail-features"></ul><div class="detail-links"><a id="detail-live" class="text-link" target="_blank" rel="noopener noreferrer" hidden>Visit live project <span class="sr-only">(opens a new tab)</span></a><p id="detail-unpublished" class="small muted">A public demo or repository link hasn’t been supplied for this record.</p></div></dialog>
-<script id="project-data" type="application/json" set:html={JSON.stringify(projects).replace(/</g,'\u003c')}/>
+
+<dialog id="project-dialog" class="detail-dialog" aria-labelledby="detail-title">
+  <div class="dialog-top">
+    <button class="icon-button" id="detail-close" aria-label="Close project details">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+      >
+        <path d="m6 6 12 12M6 18 18 6"></path>
+      </svg>
+    </button>
+  </div>
+  <h2 id="detail-title"></h2>
+  <p class="small muted" id="detail-domain"></p>
+  <p id="detail-description"></p>
+  <div id="detail-tags" class="tags"></div>
+  <h3>Inside the project</h3>
+  <ul id="detail-features"></ul>
+  <div class="detail-links">
+    <a id="detail-live" class="text-link" target="_blank" rel="noopener noreferrer" hidden>
+      Visit live project <span class="sr-only"> (opens a new tab)</span>
+    </a>
+    <p id="detail-unpublished" class="small muted">
+      A public demo or repository link hasn’t been supplied for this record.
+    </p>
+  </div>
+</dialog>
+<!-- Escape < in embedded JSON so record text cannot terminate the script element. -->
+<script
+  id="project-data"
+  type="application/json"
+  set:html={JSON.stringify(projects).replace(/</g, '\u003c')}
+/>
 <script>
-const dialog=document.querySelector<HTMLDialogElement>('#project-dialog')!;
-const data=JSON.parse(document.querySelector('#project-data')!.textContent!);
-let opener:HTMLElement|null=null;
-document.querySelectorAll<HTMLElement>('[data-project]').forEach(button=>button.addEventListener('click',()=>{const p=data.find((p:{num:string})=>p.num===button.dataset.project);if(!p)return;opener=button;document.querySelector('#detail-title')!.textContent=p.title;document.querySelector('#detail-domain')!.textContent=p.domainLabel;document.querySelector('#detail-description')!.textContent=p.description;const tags=document.querySelector('#detail-tags')!;tags.replaceChildren(...p.tags.map((text:string)=>{const span=document.createElement('span');span.className='tag';span.textContent=text;return span;}));document.querySelector('#detail-features')!.replaceChildren(...p.features.map((text:string)=>{const li=document.createElement('li');li.textContent=text;return li;}));const link=document.querySelector<HTMLAnchorElement>('#detail-live')!;link.hidden=!p.liveUrl;if(p.liveUrl)link.href=p.liveUrl;document.querySelector<HTMLElement>('#detail-unpublished')!.hidden=!!p.liveUrl;dialog.showModal();}));
-document.querySelector('#detail-close')!.addEventListener('click',()=>dialog.close());
-dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}});
-dialog.addEventListener('close',()=>opener?.focus());
+  import type { Project } from '../data/projects';
+
+  // All project buttons share this dialog. Its JSON data is rendered by Astro above.
+  // Read in order: select a record → populate text and lists → show → restore focus.
+  const dialog = document.querySelector<HTMLDialogElement>('#project-dialog')!;
+  const records: Project[] = JSON.parse(document.querySelector('#project-data')!.textContent!);
+  let openingButton: HTMLElement | null = null;
+
+  // Build plain-text elements instead of assembling HTML strings from record content.
+  function createTag(text: string) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = text;
+    return tag;
+  }
+
+  function createFeature(text: string) {
+    const feature = document.createElement('li');
+    feature.textContent = text;
+    return feature;
+  }
+
+  function populateProjectDetails(project: Project) {
+    document.querySelector('#detail-title')!.textContent = project.title;
+    document.querySelector('#detail-domain')!.textContent = project.domainLabel;
+    document.querySelector('#detail-description')!.textContent = project.description;
+    document.querySelector('#detail-tags')!.replaceChildren(...project.tags.map(createTag));
+    document
+      .querySelector('#detail-features')!
+      .replaceChildren(...project.features.map(createFeature));
+
+    // Unpublished projects show an explanation in place of an invented public link.
+    const liveLink = document.querySelector<HTMLAnchorElement>('#detail-live')!;
+    liveLink.hidden = !project.liveUrl;
+    if (project.liveUrl) liveLink.href = project.liveUrl;
+    document.querySelector<HTMLElement>('#detail-unpublished')!.hidden = !!project.liveUrl;
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-project]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const project = records.find((record) => record.num === button.dataset.project);
+      if (!project) return;
+      openingButton = button;
+      populateProjectDetails(project);
+      dialog.showModal();
+    });
+  });
+
+  document.querySelector('#detail-close')!.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (event) => {
+    // A click on the dialog itself can hit its padding. Only a point outside its
+    // rectangle is a backdrop click; clicking inside the content must keep it open.
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    const outsideHorizontalBounds = event.clientX < bounds.left || event.clientX > bounds.right;
+    const outsideVerticalBounds = event.clientY < bounds.top || event.clientY > bounds.bottom;
+    if (outsideHorizontalBounds || outsideVerticalBounds) dialog.close();
+  });
+  dialog.addEventListener('close', () => openingButton?.focus());
 </script>

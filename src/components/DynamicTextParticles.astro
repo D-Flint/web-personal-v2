@@ -1,133 +1,413 @@
 <div class="dynamic-particles">
-  <canvas aria-hidden="true"></canvas>
+  <canvas aria-hidden="true"> </canvas>
 </div>
 <style>
-.dynamic-particles{position:relative;width:100%;height:100%;overflow:visible}
-.dynamic-particles canvas{position:fixed;inset:0;display:block;width:100vw;height:100dvh;max-width:none;pointer-events:none;touch-action:pan-y}
+  .dynamic-particles {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .dynamic-particles canvas {
+    position: fixed;
+    inset: 0;
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    pointer-events: none;
+    touch-action: pan-y;
+  }
 </style>
 <script>
-import { advanceClock, stepLetterParticle, assignLetterTargets, stepLetterTransition } from '../utils/letterPhysics.mjs';
-// Text Particles by Sebastian Piskaty, MIT (2024).
-// Adapted from the user's local CodePen export. Full notice: docs/licenses/text-particles-MIT.txt.
-const box=document.querySelector<HTMLElement>('.dynamic-particles')!;
-const root=box.closest<HTMLElement>('.journal-motion')!;
-const canvas=box.querySelector<HTMLCanvasElement>('canvas')!;
-const ctx=canvas.getContext('2d');
-if(ctx){
- const words=['documented.','explored.','built.','refined.'];
- const reduced=matchMedia('(prefers-reduced-motion: reduce)');
- type Particle={x:number;y:number;baseX:number;baseY:number;vx:number;vy:number;sx:number;sy:number;endX:number;endY:number};
- let particles:Particle[]=[],targets:{x:number;y:number}[][]=[],word=0,hold=0,width=0,height=0,frame=0,last=0,visible=true,ready=false,touch=0;
- let limits={left:0,right:1,bottom:0,top:1};
- const clock={accumulator:0};
- let color='',pointerWeight=0,pointerActive=false;
- const refreshColor=()=>{color=getComputedStyle(root).getPropertyValue('--blue').trim();};
- let phase:'hold'|'scatter'|'assemble'='hold',elapsed=0,nextWord=0;
- function scatter(next:number){
-  nextWord=next;phase='scatter';elapsed=0;hold=0;
-  particles.forEach(p=>{p.sx=p.x;p.sy=p.y;p.vx=p.vy=0;p.endX=limits.left+1+Math.random()*(limits.right-limits.left-2);p.endY=limits.top+1+Math.random()*(limits.bottom-limits.top-2);});
- }
- let lastScrollY=window.scrollY,pendingScroll=0;
- const pointer={x:-500,y:-500};
- const allowed=()=>ready&&visible&&!document.hidden&&!reduced.matches;
- function stop(){cancelAnimationFrame(frame);frame=0;last=0;clock.accumulator=0;pendingScroll=0;pointerWeight=0;box.dataset.running='false';}
- function draw(){
-  ctx!.clearRect(0,0,width,height);
-  ctx!.fillStyle=color;
-  for(const p of particles){
-   ctx!.beginPath();
-   ctx!.arc(p.x,p.y,1,0,Math.PI*2);
-   ctx!.fill();
+  import {
+    advanceClock,
+    stepLetterParticle,
+    assignLetterTargets,
+    stepLetterTransition,
+  } from '../utils/letterPhysics.mjs';
+  // Text Particles by Sebastian Piskaty, MIT (2024).
+  // Adapted from the user's local CodePen export. Full notice: docs/licenses/text-particles-MIT.txt.
+  // The journal heading is painted on a fixed viewport canvas. Its target positions
+  // follow the actual text element so the animated word stays attached while scrolling.
+  // Read in order: state → phase updates → frame loop → text masks → input/lifecycle.
+  const box = document.querySelector<HTMLElement>('.dynamic-particles')!;
+  const root = box.closest<HTMLElement>('.journal-motion')!;
+  const canvas = box.querySelector<HTMLCanvasElement>('canvas')!;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // 1. Particle state uses CSS pixels. baseX/baseY locate the assembled word;
+    // sx/sy and endX/endY describe one scatter or assembly transition.
+    const words = ['documented.', 'explored.', 'built.', 'refined.'];
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    type Particle = {
+      x: number;
+      y: number;
+      baseX: number;
+      baseY: number;
+      vx: number;
+      vy: number;
+      sx: number;
+      sy: number;
+      endX: number;
+      endY: number;
+    };
+    let particles: Particle[] = [],
+      targets: { x: number; y: number }[][] = [],
+      word = 0,
+      hold = 0,
+      width = 0,
+      height = 0,
+      frame = 0,
+      lastFrameTime = 0,
+      visible = true,
+      ready = false,
+      touch = 0;
+    let limits = { left: 0, right: 1, bottom: 0, top: 1 };
+    const clock = { accumulator: 0 };
+    let color = '',
+      pointerWeight = 0,
+      pointerActive = false;
+    const refreshColor = () => {
+      color = getComputedStyle(root).getPropertyValue('--blue').trim();
+    };
+    let phase: 'hold' | 'scatter' | 'assemble' = 'hold',
+      elapsed = 0,
+      nextWord = 0;
+    // Start a transition from the current cloud, preserving continuity after interaction.
+    function startScatter(next: number) {
+      nextWord = next;
+      phase = 'scatter';
+      elapsed = 0;
+      hold = 0;
+      particles.forEach((p) => {
+        p.sx = p.x;
+        p.sy = p.y;
+        p.vx = p.vy = 0;
+        p.endX = limits.left + 1 + Math.random() * (limits.right - limits.left - 2);
+        p.endY = limits.top + 1 + Math.random() * (limits.bottom - limits.top - 2);
+      });
+    }
+    let lastScrollY = window.scrollY,
+      pendingScroll = 0;
+    const pointer = { x: -500, y: -500 };
+    const canAnimate = () => ready && visible && !document.hidden && !reduced.matches;
+    // A stopped scene discards leftover elapsed time and input impulses before resuming.
+    function stopAnimation() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      lastFrameTime = 0;
+      clock.accumulator = 0;
+      pendingScroll = 0;
+      pointerWeight = 0;
+      box.dataset.running = 'false';
+    }
+    function renderParticles() {
+      ctx!.clearRect(0, 0, width, height);
+      ctx!.fillStyle = color;
+      for (const p of particles) {
+        ctx!.beginPath();
+        ctx!.arc(p.x, p.y, 1, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+      box.dataset.phase = phase;
+      box.dataset.word = words[word];
+      box.dataset.points = String(particles.length);
+    }
+    document.addEventListener('theme-change', () => {
+      refreshColor();
+      if (ready) renderParticles();
+    });
+    function snapParticlesToWord() {
+      particles.forEach((p) => {
+        p.x = p.baseX;
+        p.y = p.baseY;
+        p.vx = p.vy = 0;
+      });
+      renderParticles();
+    }
+    function assignCurrentWordTargets() {
+      const coords = targets[word] || [];
+      assignLetterTargets(particles, coords);
+      box.dataset.word = words[word];
+    }
+    // 2. Advance phases and particles by one fixed timestep (seconds).
+    // Phase durations and touch lifetime are milliseconds, hence the dt * 1000 conversion.
+    function advanceParticleStep(dt: number) {
+      if (touch) {
+        touch -= dt * 1000;
+        if (touch <= 0) deactivatePointer();
+      }
+      pointerWeight = Math.max(
+        0,
+        Math.min(1, pointerWeight + ((pointerActive ? 1 : -1) * dt) / 0.15),
+      );
+      if (phase === 'hold') {
+        hold += dt * 1000;
+        if (hold >= 5000) startScatter((word + 1) % words.length);
+      } else {
+        elapsed += dt * 1000;
+        if (phase === 'scatter' && elapsed >= 1400) {
+          word = nextWord;
+          assignCurrentWordTargets();
+          particles.forEach((p) => {
+            p.sx = p.x;
+            p.sy = p.y;
+            p.endX = p.baseX;
+            p.endY = p.baseY;
+          });
+          phase = 'assemble';
+          elapsed = 0;
+        } else if (phase === 'assemble' && elapsed >= 3000) {
+          phase = 'hold';
+          elapsed = 0;
+          hold = 0;
+        }
+      }
+      particles.forEach((p, i) => {
+        if (phase === 'hold')
+          stepLetterParticle(p, { phase, elapsed, pointer, pointerWeight, limits, index: i }, dt);
+        else stepLetterTransition(p, elapsed, phase === 'scatter' ? 1400 : 3000);
+      });
+    }
+    // Consume accumulated scroll once per display frame, then let the fixed clock
+    // advance simulation independently of the monitor refresh rate.
+    function animateParticleFrame(now: number) {
+      frame = 0;
+      if (!canAnimate()) {
+        stopAnimation();
+        return;
+      }
+      const frameElapsedMs = lastFrameTime ? Math.min(50, Math.max(0, now - lastFrameTime)) : 0;
+      lastFrameTime = now;
+      const scrollImpulse = Math.max(-1.4, Math.min(1.4, pendingScroll * 0.018));
+      pendingScroll = 0;
+      if (scrollImpulse && phase === 'hold') {
+        particles.forEach((p, i) => {
+          const weight = 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(i * 2.399));
+          p.vy += scrollImpulse * 60 * weight;
+          p.vx += scrollImpulse * 60 * Math.sin(i * 1.618) * 0.14;
+        });
+      }
+      advanceClock(clock, frameElapsedMs, advanceParticleStep);
+      renderParticles();
+      frame = requestAnimationFrame(animateParticleFrame);
+      box.dataset.running = 'true';
+    }
+    function updateAnimationPlayback() {
+      if (canAnimate() && !frame) {
+        lastFrameTime = 0;
+        frame = requestAnimationFrame(animateParticleFrame);
+        box.dataset.running = 'true';
+      } else if (!canAnimate()) stopAnimation();
+    }
+    // 3. Align the canvas with the heading, rasterize each word, and sample its ink.
+    // A shared budget keeps dense glyphs complete without exceeding the particle cap.
+    // Rebuild text masks after fonts or geometry change; preserve the cloud around its new center.
+    function rebuildTextTargets() {
+      if (!ready) return;
+      const bounds = canvas.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) return;
+      width = bounds.width;
+      height = bounds.height;
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const mask = document.createElement('canvas');
+      mask.width = Math.ceil(width);
+      mask.height = Math.ceil(height);
+      const ink = mask.getContext('2d', { willReadFrequently: true })!;
+      const span = root.querySelector<HTMLElement>('.motion-documented')!,
+        rect = span.getBoundingClientRect(),
+        css = getComputedStyle(span);
+      const cx = rect.left - bounds.left + rect.width / 2,
+        cy = rect.top - bounds.top + rect.height / 2;
+      const previousCenter = {
+        x: (limits.left + limits.right) / 2,
+        y: (limits.bottom + limits.top) / 2,
+      };
+      limits = {
+        left: cx - rect.width / 2 - 16,
+        right: cx + rect.width / 2 + 16,
+        bottom: cy + rect.height / 2 + 16,
+        top: cy - rect.height / 2 - 16,
+      };
+      if (particles.length)
+        particles.forEach((p) => {
+          const dx = cx - previousCenter.x,
+            dy = cy - previousCenter.y;
+          p.x += dx;
+          p.y += dy;
+          p.sx += dx;
+          p.sy += dy;
+          p.endX += dx;
+          p.endY += dy;
+          for (const key of ['x', 'sx', 'endX'] as const)
+            p[key] = Math.max(limits.left + 1, Math.min(limits.right - 1, p[key]));
+          for (const key of ['y', 'sy', 'endY'] as const)
+            p[key] = Math.max(limits.top + 1, Math.min(limits.bottom - 1, p[key]));
+        });
+      const masks = words.map((text) => {
+        ink.clearRect(0, 0, mask.width, mask.height);
+        ink.font = `${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;
+        ink.textBaseline = 'alphabetic';
+        const metrics = ink.measureText(text),
+          size = parseFloat(css.fontSize);
+        const ascent = metrics.fontBoundingBoxAscent || size * 0.95,
+          descent = metrics.fontBoundingBoxDescent || size * 0.25;
+        const baseline = rect.top - bounds.top + (rect.height - ascent - descent) / 2 + ascent;
+        ink.fillText(text, rect.left - bounds.left, baseline, Math.min(rect.width, width - 4));
+        return ink.getImageData(0, 0, mask.width, mask.height).data;
+      });
+      // Retain every sampled cell for every word, using one shared particle budget.
+      const budget = width < 400 ? 3000 : 5000;
+      let gap = 2;
+      do {
+        targets = masks.map((data) => {
+          const coords: { x: number; y: number }[] = [];
+          for (let y = 2; y < mask.height - 2; y += gap)
+            for (let x = 2; x < mask.width - 2; x += gap)
+              if (data[(Math.floor(y) * mask.width + Math.floor(x)) * 4 + 3] > 128)
+                coords.push({ x, y });
+          return coords;
+        });
+        if (targets.every((t) => t.length <= budget)) break;
+        gap += 0.5;
+      } while (gap < 20);
+      const count = Math.min(budget, Math.max(1500, ...targets.map((t) => t.length)));
+      const old = particles;
+      if (old.length !== count)
+        particles = Array.from({ length: count }, (_, i) =>
+          old.length
+            ? { ...old[Math.floor((i * old.length) / count)] }
+            : { x: 0, y: 0, baseX: 0, baseY: 0, vx: 0, vy: 0, sx: 0, sy: 0, endX: 0, endY: 0 },
+        );
+      refreshColor();
+      assignCurrentWordTargets();
+      if (phase === 'assemble')
+        particles.forEach((p) => {
+          p.endX = p.baseX;
+          p.endY = p.baseY;
+        });
+      if (phase === 'scatter')
+        particles.forEach((p) => {
+          p.endX = Math.max(limits.left + 1, Math.min(limits.right - 1, p.endX));
+          p.endY = Math.max(limits.top + 1, Math.min(limits.bottom - 1, p.endY));
+        });
+      if (!old.length || reduced.matches) snapParticlesToWord();
+      else renderParticles();
+      box.dataset.ready = 'true';
+      updateAnimationPlayback();
+    }
+    // 4. Input/lifecycle. Pointer coordinates are local to the fixed canvas.
+    // Touch influence expires; it never captures or blocks the scrolling gesture.
+    function deactivatePointer() {
+      pointerActive = false;
+      touch = 0;
+    }
+    document.addEventListener('pointermove', (e) => {
+      if (!canAnimate() || e.pointerType === 'touch') return;
+      const hit = box.getBoundingClientRect();
+      if (
+        e.clientX < hit.left - 60 ||
+        e.clientX > hit.right + 60 ||
+        e.clientY < hit.top - 60 ||
+        e.clientY > hit.bottom + 60
+      ) {
+        deactivatePointer();
+        return;
+      }
+      const r = canvas.getBoundingClientRect();
+      pointer.x = e.clientX - r.left;
+      pointer.y = e.clientY - r.top;
+      pointerActive = true;
+      updateAnimationPlayback();
+    });
+    document.addEventListener('pointerleave', (event) => {
+      if (event.pointerType !== 'touch') deactivatePointer();
+    });
+    document.addEventListener('pointercancel', deactivatePointer);
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (!canAnimate()) return;
+        const hit = box.getBoundingClientRect();
+        if (
+          e.clientX < hit.left - 60 ||
+          e.clientX > hit.right + 60 ||
+          e.clientY < hit.top - 60 ||
+          e.clientY > hit.bottom + 60
+        ) {
+          deactivatePointer();
+          return;
+        }
+        const r = canvas.getBoundingClientRect();
+        pointer.x = e.clientX - r.left;
+        pointer.y = e.clientY - r.top;
+        pointerActive = true;
+        if (e.pointerType === 'touch') touch = 350;
+        updateAnimationPlayback();
+      },
+      { passive: true },
+    );
+    // Scrolling moves the text relative to this fixed canvas. Shift every stored
+    // position by the same amount to avoid detaching the cloud or restarting its transition.
+    window.addEventListener(
+      'scroll',
+      () => {
+        const y = window.scrollY,
+          delta = y - lastScrollY;
+        lastScrollY = y;
+        const shift = -delta;
+        limits.top += shift;
+        limits.bottom += shift;
+        particles.forEach((p) => {
+          p.y += shift;
+          p.baseY += shift;
+          p.sy += shift;
+          p.endY += shift;
+        });
+        targets.forEach((coords) =>
+          coords.forEach((p) => {
+            p.y += shift;
+          }),
+        );
+        if (ready) renderParticles();
+        deactivatePointer();
+        if (!canAnimate()) {
+          pendingScroll = 0;
+          return;
+        }
+        pendingScroll = Math.max(-120, Math.min(120, pendingScroll + delta));
+      },
+      { passive: true },
+    );
+    new ResizeObserver(rebuildTextTargets).observe(canvas);
+    new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      if (!visible) deactivatePointer();
+      updateAnimationPlayback();
+    }).observe(box);
+    document.addEventListener('visibilitychange', () => {
+      deactivatePointer();
+      updateAnimationPlayback();
+    });
+    reduced.addEventListener('change', () => {
+      deactivatePointer();
+      if (reduced.matches) {
+        word = 0;
+        hold = 0;
+        phase = 'hold';
+        elapsed = 0;
+        assignCurrentWordTargets();
+        snapParticlesToWord();
+      }
+      updateAnimationPlayback();
+    });
+    document.fonts.ready.then(() => {
+      ready = true;
+      rebuildTextTargets();
+    });
   }
-  box.dataset.phase=phase;box.dataset.word=words[word];box.dataset.points=String(particles.length);
- }
- document.addEventListener('theme-change',()=>{refreshColor();if(ready)draw();});
- function home(){particles.forEach(p=>{p.x=p.baseX;p.y=p.baseY;p.vx=p.vy=0;});draw();}
- function assign(){
-  const coords=targets[word]||[];
-  assignLetterTargets(particles,coords);
-  box.dataset.word=words[word];
- }
- function simulate(dt:number){
-  if(touch){touch-=dt*1000;if(touch<=0)deactivatePointer();}
-  pointerWeight=Math.max(0,Math.min(1,pointerWeight+(pointerActive?1:-1)*dt/.15));
-  if(phase==='hold'){
-   hold+=dt*1000;
-   if(hold>=5000)scatter((word+1)%words.length);
-  }else{
-   elapsed+=dt*1000;
-   if(phase==='scatter'&&elapsed>=1400){word=nextWord;assign();particles.forEach(p=>{p.sx=p.x;p.sy=p.y;p.endX=p.baseX;p.endY=p.baseY;});phase='assemble';elapsed=0;}
-   else if(phase==='assemble'&&elapsed>=3000){phase='hold';elapsed=0;hold=0;}
-  }
-  particles.forEach((p,i)=>{if(phase==='hold')stepLetterParticle(p,{phase,elapsed,pointer,pointerWeight,limits,index:i},dt);else stepLetterTransition(p,elapsed,phase==='scatter'?1400:3000);});
- }
- function tick(now:number){
-  frame=0;if(!allowed()){stop();return;}
-  const ms=last?Math.min(50,Math.max(0,now-last)):0;last=now;
-  const scrollImpulse=Math.max(-1.4,Math.min(1.4,pendingScroll*.018));pendingScroll=0;
-  if(scrollImpulse&&phase==='hold'){
-   particles.forEach((p,i)=>{const weight=.65+.35*(.5+.5*Math.sin(i*2.399));p.vy+=scrollImpulse*60*weight;p.vx+=scrollImpulse*60*Math.sin(i*1.618)*.14;});
-  }
-  advanceClock(clock,ms,simulate);
-  draw();frame=requestAnimationFrame(tick);box.dataset.running='true';
- }
- function wake(){if(allowed()&&!frame){last=0;frame=requestAnimationFrame(tick);box.dataset.running='true';}else if(!allowed())stop();}
- function measure(){
-  if(!ready)return;
-  const bounds=canvas.getBoundingClientRect();if(!bounds.width||!bounds.height)return;
-  width=bounds.width;height=bounds.height;const dpr=Math.min(devicePixelRatio||1,2);
-  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx!.setTransform(dpr,0,0,dpr,0,0);
-  const mask=document.createElement('canvas');mask.width=Math.ceil(width);mask.height=Math.ceil(height);const ink=mask.getContext('2d',{willReadFrequently:true})!;
-  const span=root.querySelector<HTMLElement>('.motion-documented')!,rect=span.getBoundingClientRect(),css=getComputedStyle(span);
-  const cx=rect.left-bounds.left+rect.width/2,cy=rect.top-bounds.top+rect.height/2;
-  const previousCenter={x:(limits.left+limits.right)/2,y:(limits.bottom+limits.top)/2};
-  limits={left:cx-rect.width/2-16,right:cx+rect.width/2+16,bottom:cy+rect.height/2+16,top:cy-rect.height/2-16};
-  if(particles.length)particles.forEach(p=>{const dx=cx-previousCenter.x,dy=cy-previousCenter.y;p.x+=dx;p.y+=dy;p.sx+=dx;p.sy+=dy;p.endX+=dx;p.endY+=dy;for(const key of ['x','sx','endX'] as const)p[key]=Math.max(limits.left+1,Math.min(limits.right-1,p[key]));for(const key of ['y','sy','endY'] as const)p[key]=Math.max(limits.top+1,Math.min(limits.bottom-1,p[key]));});
-  const masks=words.map(text=>{
-   ink.clearRect(0,0,mask.width,mask.height);
-   ink.font=`${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${css.fontFamily}`;ink.textBaseline='alphabetic';
-   const metrics=ink.measureText(text),size=parseFloat(css.fontSize);
-   const ascent=metrics.fontBoundingBoxAscent||size*.95,descent=metrics.fontBoundingBoxDescent||size*.25;
-   const baseline=rect.top-bounds.top+(rect.height-ascent-descent)/2+ascent;
-   ink.fillText(text,rect.left-bounds.left,baseline,Math.min(rect.width,width-4));
-   return ink.getImageData(0,0,mask.width,mask.height).data;
-  });
-  // Retain every sampled cell for every word, using one shared particle budget.
-  const budget=width<400?3000:5000;
-  let gap=2;
-  do{
-   targets=masks.map(data=>{
-    const coords:{x:number;y:number}[]=[];
-    for(let y=2;y<mask.height-2;y+=gap)for(let x=2;x<mask.width-2;x+=gap)if(data[(Math.floor(y)*mask.width+Math.floor(x))*4+3]>128)coords.push({x,y});
-    return coords;
-   });
-   if(targets.every(t=>t.length<=budget))break;gap+=.5;
-  }while(gap<20);
-  const count=Math.min(budget,Math.max(1500,...targets.map(t=>t.length)));
-  const old=particles;
-  if(old.length!==count)particles=Array.from({length:count},(_,i)=>old.length?{...old[Math.floor(i*old.length/count)]}:{x:0,y:0,baseX:0,baseY:0,vx:0,vy:0,sx:0,sy:0,endX:0,endY:0});
-  refreshColor();assign();if(phase==='assemble')particles.forEach(p=>{p.endX=p.baseX;p.endY=p.baseY;});if(phase==='scatter')particles.forEach(p=>{p.endX=Math.max(limits.left+1,Math.min(limits.right-1,p.endX));p.endY=Math.max(limits.top+1,Math.min(limits.bottom-1,p.endY));});if(!old.length||reduced.matches)home();else draw();box.dataset.ready='true';wake();
- }
- function deactivatePointer(){pointerActive=false;touch=0;}
- document.addEventListener('pointermove',e=>{if(!allowed()||e.pointerType==='touch')return;const hit=box.getBoundingClientRect();if(e.clientX<hit.left-60||e.clientX>hit.right+60||e.clientY<hit.top-60||e.clientY>hit.bottom+60){deactivatePointer();return;}const r=canvas.getBoundingClientRect();pointer.x=e.clientX-r.left;pointer.y=e.clientY-r.top;pointerActive=true;wake();});
- document.addEventListener('pointerleave',event=>{if(event.pointerType!=='touch')deactivatePointer();});
- document.addEventListener('pointercancel',deactivatePointer);
- document.addEventListener('pointerdown',e=>{if(!allowed())return;const hit=box.getBoundingClientRect();if(e.clientX<hit.left-60||e.clientX>hit.right+60||e.clientY<hit.top-60||e.clientY>hit.bottom+60){deactivatePointer();return;}const r=canvas.getBoundingClientRect();pointer.x=e.clientX-r.left;pointer.y=e.clientY-r.top;pointerActive=true;if(e.pointerType==='touch')touch=350;wake();},{passive:true});
- window.addEventListener('scroll',()=>{
-  const y=window.scrollY,delta=y-lastScrollY;lastScrollY=y;
-  const shift=-delta;
-  limits.top+=shift;limits.bottom+=shift;
-  particles.forEach(p=>{p.y+=shift;p.baseY+=shift;p.sy+=shift;p.endY+=shift;});
-  targets.forEach(coords=>coords.forEach(p=>{p.y+=shift;}));
-  if(ready)draw();
-  deactivatePointer();
-  if(!allowed()){pendingScroll=0;return;}
-  pendingScroll=Math.max(-120,Math.min(120,pendingScroll+delta));
- },{passive:true});
- new ResizeObserver(measure).observe(canvas);
- new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(!visible)deactivatePointer();wake();}).observe(box);
- document.addEventListener('visibilitychange',()=>{deactivatePointer();wake();});
- reduced.addEventListener('change',()=>{deactivatePointer();if(reduced.matches){word=0;hold=0;phase='hold';elapsed=0;assign();home();}wake();});
- document.fonts.ready.then(()=>{ready=true;measure();});
-}
 </script>
