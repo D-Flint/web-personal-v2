@@ -1,0 +1,52 @@
+---
+import type { ProjectPreview } from '../data/projectPreviews';
+import { routePath } from '../utils/projectAssembly';
+const { preview, title } = Astro.props as { preview: ProjectPreview; title: string };
+const endTransform = (points: {x:number;y:number}[]) => {
+  const end=points.at(-1)!;
+  const before=points.slice(0,-1).reverse().find(p=>p.x!==end.x||p.y!==end.y) || {x:end.x-1,y:end.y};
+  return `translate(${end.x} ${end.y}) rotate(${Math.atan2(end.y-before.y,end.x-before.x)*180/Math.PI})`;
+};
+---
+<figure class="assembly-figure">
+  <figcaption class="assembly-caption">
+    <span>{preview.caption}</span><span>{preview.illustrative && 'Illustrative architecture — details pending'}</span>
+  </figcaption>
+  <div class="assembly-diagram">
+    {(['desktop','mobile'] as const).map(layout => (
+      <svg class={`assembly-svg assembly-${layout}`} data-assembly-layout={layout}
+        viewBox={layout==='desktop'?'0 0 960 400':'0 0 330 365'}
+        role="img" aria-labelledby={`assembly-${preview.id}-${layout}-title assembly-${preview.id}-${layout}-desc`}>
+        <title id={`assembly-${preview.id}-${layout}-title`}>{title} architecture schematic</title>
+        <desc id={`assembly-${preview.id}-${layout}-desc`}>{preview.summary}</desc>
+        <g class="assembly-connections" fill="none">
+          {preview.edges.map(edge => (
+            <g data-assembly-connection={edge.id}>
+              <path data-assembly-wire={edge.id} d={routePath(edge[layout])} />
+              <path class="assembly-arrow" data-assembly-head={edge.id} d="M-7 -4 L0 0 L-7 4" transform={endTransform(edge[layout])} />
+              {edge.label && edge.labelAt && <text class="assembly-relationship" data-assembly-relationship x={edge.labelAt[layout].x} y={edge.labelAt[layout].y}>{edge.label}</text>}
+            </g>
+          ))}
+        </g>
+        {preview.nodes.map(node => {
+          const n=node[layout];
+          const compact=layout==='mobile';
+          return <g data-assembly-node={node.id} transform={`translate(${n.x} ${n.y})`}>
+            <rect class="assembly-node-box" width={n.w} height={n.h} rx={node.shape==='store'?8:2} />
+            {node.shape==='browser' && <path class="assembly-inner-rule" d={`M0 9 H${n.w}`} />}
+            <text class="assembly-primary" x={compact?9:14} y={compact?24:28}>{node.label}</text>
+            {!compact && <path class="assembly-inner-rule" d={`M14 39 H${n.w-14}`} />}
+            {(compact ? node.details.slice(0,1) : node.details).map((line,i) => (
+              <text class="assembly-detail" x={compact?9:14} y={compact?Math.min(44,n.h-7):node.details.length===1?55:60+i*17}>{line}</text>
+            ))}
+            {preview.edges.flatMap(edge => {
+              const points=edge[layout];
+              const port=edge.from===node.id?points[0]:edge.to===node.id?points.at(-1):null;
+              return port ? [<circle class="assembly-port" cx={port.x-n.x} cy={port.y-n.y} r={compact?2:3} />] : [];
+            })}
+          </g>;
+        })}
+      </svg>
+    ))}
+  </div>
+</figure>

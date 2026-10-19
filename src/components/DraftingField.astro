@@ -129,7 +129,7 @@
       };
       document
         .querySelectorAll<HTMLElement>(
-          '.header, .hero-pixel-field, .motion-heading, .figure, main button, main a, main input, main textarea, main summary, main .tags, .form-actions, .assistant-launcher, dialog[open]',
+          '.header, .hero-pixel-field, .motion-heading, .figure, .assembly-figure, main button, main a, main input, main textarea, main summary, main .tags, .form-actions, .assistant-launcher, dialog[open]',
         )
         .forEach((el) => add(el.getBoundingClientRect()));
       document
@@ -677,7 +677,7 @@
     const observer = new ResizeObserver(() => invalidateGeometry());
     document
       .querySelectorAll(
-        'main, .header, .footer, .figure, main h1, main h2, main h3, main p, main button, main input, main textarea, dialog',
+        'main, .header, .footer, .figure, .assembly-figure, main h1, main h2, main h3, main p, main button, main input, main textarea, dialog',
       )
       .forEach((el) => observer.observe(el));
     new MutationObserver(() => invalidateGeometry()).observe(document.querySelector('main')!, {

@@ -1,6 +1,11 @@
 # Project preview assembly rework - implementation plan
 
-Updated: 2026-10-19. Status: planning only; no interface changes are implemented by this document.
+Updated: 2026-10-19. Status: implemented for the first animation delivery; desktop notes remain deferred. See [implementation evidence](.impeccable/review/assembly/README.md). The selected pacing is four viewport heights total after reviewing the two-height starting point.
+
+## Owner follow-up — concurrent motion (2026-10-19)
+
+The owner found the initial motion insufficiently immersive and asked arrows to start as blocks move into position. This supersedes the initial serial assembly/wire timeline and the decision to wait for all nodes to settle. The delivered refinement uses larger separated offsets, overlapping node arrivals from 4–72%, connections that start with their movement groups and follow both moving ports, and a wider scene framing that pulls into the final composition by 78%. The complete graph and CTA still hold over 80–100% of the same four-height track. Fit checks cover the enlarged opening; 390px phones remain pinned and tighter viewports use the complete static fallback when labels would be too small. See [updated evidence](.impeccable/review/assembly-overlap/README.md). The sections below preserve the initial delivery plan; this follow-up governs the revised choreography.
+
 
 This plan develops the owner's answers preserved in Appendix A. It covers the homepage selected-work sequence. The visitor should understand how a project fits together by scrolling from separated components to one complete, readable architecture diagram.
 
@@ -242,7 +247,7 @@ Keep all preview data serialized safely if embedded in HTML: escape `<` in JSON 
 8. **Verify in bounded passes.** Batch desktop/mobile/theme/motion captures and regression checks; fix observed defects together, then confirm once. Do not polish unrelated surfaces.
 9. **Update records and request only the deferred note decision.** Record the selected total height, what shipped and what remains illustrative. After the owner has seen the animation, resume discussion of desktop explanations; do not treat their absence as a failed first-preview requirement. Run QC after final edits and append both mandatory logs.
 
-This planning session does not authorize implementation, publication, commits or pushes. Source implementation starts only when requested; document editing and its required QC/logging are the present deliverables.
+The original planning session did not authorize source changes. The owner subsequently requested implementation of this plan on 2026-10-19. Publication, commits and pushes remain outside this delivery.
 
 ## 13. Verification and acceptance criteria
 

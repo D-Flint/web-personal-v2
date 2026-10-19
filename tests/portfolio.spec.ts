@@ -177,8 +177,8 @@ test('workbench lifecycle and no unhandled application errors', async ({ page })
 });
 
 
-test('scroll opens schematics with attached wires and keeps the drafting field across routes', async ({ page }) => {
-  await page.goto('/');
+test('catalog opens schematics with attached wires and keeps the drafting field across routes', async ({ page }) => {
+  await page.goto('/projects');
   const figure = page.locator('[data-diagram]').nth(0);
   await figure.evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - innerHeight + 30));
   const assembled = await figure.locator('[data-node="guard"]').getAttribute('transform');
@@ -203,7 +203,7 @@ test('scroll opens schematics with attached wires and keeps the drafting field a
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/projects');
   const before = await page.locator<HTMLCanvasElement>('#drafting-canvas').evaluate(el => el.toDataURL());
-  await page.locator('.catalog-item').nth(10).scrollIntoViewIfNeeded();
+  await page.locator('.catalog-item').nth(3).scrollIntoViewIfNeeded();
   await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-running', 'true');
   await expect.poll(() => page.locator<HTMLCanvasElement>('#drafting-canvas').evaluate(el => el.toDataURL())).not.toBe(before);
   expect(await page.locator('#drafting-canvas').evaluate(el => el.getBoundingClientRect().top)).toBe(0);
@@ -213,7 +213,7 @@ test('scroll opens schematics with attached wires and keeps the drafting field a
 test('touch scrolling drives diagrams and the carriage without pointer input', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  await page.goto('http://localhost:4322/');
+  await page.goto('http://localhost:4322/projects');
   const figure = page.locator('[data-diagram]').nth(0);
   await figure.evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - (innerHeight - el.clientHeight) / 2));
   await expect.poll(() => figure.getAttribute('data-opening')).toBe('1.000');

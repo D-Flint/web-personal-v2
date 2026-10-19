@@ -1,12 +1,13 @@
 ---
 export const prerender = true;
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ProjectFigure from '../components/ProjectFigure.astro';
+import ProjectAssembly from '../components/ProjectAssembly.astro';
+import { projectPreviews } from '../data/projectPreviews';
 import Arrow from '../components/Arrow.astro';
 import Contact from '../components/Contact.astro';
 import HeroParticles from '../components/HeroParticles.astro';
 import { projects } from '../data/projects';
-const selectedProjects = projects.slice(0, 3);
+const selectedProjects = ['01', '02', '03'].flatMap(id => projects.filter(project => project.num === id));
 ---
 
 <BaseLayout>
@@ -38,27 +39,8 @@ const selectedProjects = projects.slice(0, 3);
         A closer look at the systems I’m building, from browser to background process.
       </p>
     </div>{
-      selectedProjects.map((project, index) => (
-        <article class="project-presentation">
-          <>
-            <ProjectFigure variant={['agent', 'web', 'tools'][index]} />
-            <div class="project-story">
-              <>
-                <h3>{project.title}</h3>
-                <p class="project-kind">{project.domainLabel}</p>
-                <p>{project.description}</p>
-                <div class="tags">
-                  {project.tags.map((tag) => (
-                    <span class="tag">{tag}</span>
-                  ))}
-                </div>
-                <button class="text-link" data-project={project.num}>
-                  Explore project <Arrow />
-                </button>
-              </>
-            </div>
-          </>
-        </article>
+      selectedProjects.map(project => (
+        <ProjectAssembly project={project} preview={projectPreviews[project.num]} />
       ))
     }<div class="archive-link">
       <a class="text-link" href="/projects">Browse all {projects.length} projects <Arrow /> </a>

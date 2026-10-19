@@ -89,6 +89,7 @@ const tags = [...new Set(projects.flatMap((project) => project.tags))].sort();
       {
         projects.map((project) => (
           <article
+            id={`project-${project.num}`}
             class:list={['catalog-item', { 'has-study': Boolean(studies[project.num]) }]}
             data-search={`${project.title} ${project.description} ${project.tags.join(' ')}`.toLowerCase()}
             data-domain={project.domain}
@@ -222,6 +223,15 @@ const tags = [...new Set(projects.flatMap((project) => project.tags))].sort();
         } catch {}
       }),
     );
+
+    // Persisted list layout and font metrics can move a native hash target after
+    // the initial browser jump. Reconcile only catalog-entry links after layout.
+    function alignCatalogEntry() {
+      if (!/^#project-\d+$/.test(location.hash)) return;
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+    document.fonts.ready.then(() => requestAnimationFrame(alignCatalogEntry));
+    window.addEventListener('hashchange', () => requestAnimationFrame(alignCatalogEntry));
 
     // 5. Search shortcuts yield to dialogs and inputs so normal editing still works.
     document.addEventListener('keydown', (e) => {

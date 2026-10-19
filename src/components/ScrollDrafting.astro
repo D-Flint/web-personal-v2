@@ -13,7 +13,7 @@
     axis?: string;
   };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const figures = Array.from(document.querySelectorAll<HTMLElement>('[data-diagram]')).map(
+  const figures = Array.from(document.querySelectorAll<HTMLElement>('#project-catalog [data-diagram]')).map(
     (figure) => ({
       figure,
       nodes: JSON.parse(figure.dataset.nodes!) as Node[],
