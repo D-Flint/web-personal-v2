@@ -75,7 +75,7 @@ for(const width of [1440,390])test(`boxes wait for the previous landing at ${wid
   const article=articles(page).nth(study);
   const count=projectPreviews[String(study+1).padStart(2,'0')].nodes.length;
   for(const index of [...Array(count).keys(),...Array(count).keys()].map((n,i)=>i<count?n:count-1-n)) {
-   await seek(article,.04+(index+.5)*.68/count);
+   await seek(article,.04+(index+.4)*.68/count);
    const {nodes}=await drawing(article);
    for(let i=0;i<count;i++) {
     const n=nodes[i];
@@ -86,6 +86,15 @@ for(const width of [1440,390])test(`boxes wait for the previous landing at ${wid
      expect(remaining).toBeGreaterThan(.45);expect(remaining).toBeLessThan(.55);
      expect(n.opacity).toBeGreaterThan(.45);expect(n.opacity).toBeLessThan(.55);
     }
+   }
+   // Leave a settled interval before the next block starts, in either direction.
+   await seek(article,.04+(index+.9)*.68/count);
+   const settled=await drawing(article);
+   for(let i=0;i<count;i++) {
+    const n=settled.nodes[i],landed=i<=index;
+    expect(n.x).toBeCloseTo(n.config.x+(landed?0:n.config.dx),2);
+    expect(n.y).toBeCloseTo(n.config.y+(landed?0:n.config.dy),2);
+    expect(n.opacity).toBe(landed?1:0);
    }
   }
  }

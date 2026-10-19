@@ -4,8 +4,9 @@ const smooth = (t:number) => t*t*(3-2*t);
 const NODE_SEQUENCE_START = .04;
 const NODE_SEQUENCE_END = .72;
 export const nodeStart = (index:number,count:number) => NODE_SEQUENCE_START+index*(NODE_SEQUENCE_END-NODE_SEQUENCE_START)/count;
-export const nodeEnd = (index:number,count:number) => nodeStart(index+1,count);
-// A box owns one exclusive scroll interval; the next waits for its exact landing.
+// Reserve the last fifth of each slot for a settled pause before the next arrival.
+export const nodeEnd = (index:number,count:number) => nodeStart(index,count)+.8*(NODE_SEQUENCE_END-NODE_SEQUENCE_START)/count;
+// A box owns one exclusive scroll interval; the next waits through its landing pause.
 export const nodeProgress = (p:number,index:number,count:number) => smooth(clamp((p-nodeStart(index,count))/(nodeEnd(index,count)-nodeStart(index,count))));
 // A connection can launch only from a fully landed source. Allow late-source
 // edges a final connecting interval before the complete-graph hold at 80%.

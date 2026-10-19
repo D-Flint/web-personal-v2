@@ -42,10 +42,15 @@ lighthouse-local.log
 preview.log
 http.log
 # local agent installations and machine-specific permissions
-/.agents/
-/.codex/
-/.claude/
-/.impeccable/
+.agents/
+.agent/
+.codex/
+.claude/
+.impeccable/
+# Agent instructions, files, and folders at any depth (any letter case)
+[aA][gG][eE][nN][tT][sS]*
+[aA][gG][eE][nN][tT]/
+.[aA][gG][eE][nN][tT][sS]*
 
 # generated deliverables, scratch work, and audit reports
 /outputs/
@@ -92,8 +97,8 @@ GEMINI.md
 
 # agent workflows, local tool configuration, and source audit snapshot
 /.aws/
-/.gemini/
-/.cursor/
+.gemini/
+.cursor/
 /.clinerules
 /.clinerules/
 /.cursorrules
