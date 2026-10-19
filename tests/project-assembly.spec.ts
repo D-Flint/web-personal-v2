@@ -4,7 +4,7 @@ import { projectPreviews } from '../src/data/projectPreviews';
 
 const articles = (page:Page) => page.locator('[data-project-assembly]');
 async function ready(page:Page) {
-  await page.goto('/');
+  await page.goto('/',{waitUntil:'networkidle'});
   await page.evaluate(()=>document.fonts.ready);
   await expect(articles(page).first()).toHaveAttribute('data-assembly-progress');
 }
@@ -24,22 +24,28 @@ async function drawing(article:Locator) {
     const p=Number((el as HTMLElement).dataset.assemblyProgress);
     const nodes=Array.from(svg.querySelectorAll<SVGGElement>('[data-assembly-node]')).map((node,i)=>{
       const m=node.transform.baseVal.consolidate()!.matrix;
-      return {x:m.e,y:m.f,config:preview.nodes[i][kind],group:preview.nodes[i].group};
+      const n=preview.nodes[i][kind],width=kind==='desktop'?960:330,height=kind==='desktop'?400:365;
+      const config={...n,dx:Math.max(8,Math.min(width-n.w-8,n.x+n.dx))-n.x,dy:Math.max(8,Math.min(height-n.h-8,n.y+n.dy))-n.y};
+      const bounds=node.querySelector('rect')!.getBoundingClientRect();
+      return {x:m.e,y:m.f,width:bounds.width,height:bounds.height,config,opacity:Number(getComputedStyle(node).opacity),group:preview.nodes[i].group};
     });
     const wires=Array.from(svg.querySelectorAll<SVGPathElement>('[data-assembly-wire]')).map((path,i)=>{
-      const length=path.getTotalLength(),offset=parseFloat(path.style.strokeDashoffset),t=1-offset/length;
+      const length=path.getTotalLength(),t=Number(path.dataset.assemblyWireProgress);
       const head=svg.querySelectorAll<SVGPathElement>('[data-assembly-head]')[i];
       const hm=head.transform.baseVal.consolidate()!.matrix;
-      const point=path.getPointAtLength(Math.max(0,Math.min(length,length-offset)));
+      const point=path.getPointAtLength(length);
       const route=preview.edges[i][kind];
       const ctm=path.getScreenCTM()!;
       const edge=preview.edges[i];
       const fromNode=preview.nodes.find(n=>n.id===edge.from),toNode=preview.nodes.find(n=>n.id===edge.to);
-      const from=svg.querySelector<SVGGElement>(`[data-assembly-node="${edge.from}"]`)!,to=svg.querySelector<SVGGElement>(`[data-assembly-node="${edge.to}"]`)!;
+      // Sources follow actual node transforms; destinations remain at final ports.
+      const from=svg.querySelector<SVGGElement>(`[data-assembly-node="${edge.from}"]`)!;
       const source=new DOMPoint(route[0].x-fromNode[kind].x,route[0].y-fromNode[kind].y).matrixTransform(from.getScreenCTM()!);
-      const dest=new DOMPoint(route.at(-1).x-toNode[kind].x,route.at(-1).y-toNode[kind].y).matrixTransform(to.getScreenCTM()!);
+      const final=new DOMPoint(route.at(-1).x,route.at(-1).y).matrixTransform(ctm);
+      const dest={x:source.x+(final.x-source.x)*t,y:source.y+(final.y-source.y)*t};
+      const targetAngle=Math.atan2(final.y-source.y,final.x-source.x)*180/Math.PI;
       const start=path.getPointAtLength(0).matrixTransform(ctm),end=path.getPointAtLength(length).matrixTransform(ctm);
-      return {t,tipError:Math.hypot(point.x-hm.e,point.y-hm.f),visible:getComputedStyle(head).visibility,group:preview.edges[i].group,lastNodeGroup:Math.max(fromNode.group,toNode.group),
+      return {targetAngle,headX:hm.e,headY:hm.f,destinationGap:Math.hypot(hm.e-route.at(-1).x,hm.f-route.at(-1).y),route: path.getAttribute('d'),t,tipError:Math.hypot(point.x-hm.e,point.y-hm.f),visible:getComputedStyle(head).visibility,sourceIndex:preview.nodes.indexOf(fromNode),targetIndex:preview.nodes.indexOf(toNode),count:preview.nodes.length,
         portError:Math.max(Math.hypot(source.x-start.x,source.y-start.y),Math.hypot(dest.x-end.x,dest.y-end.y)),angle:Math.atan2(hm.b,hm.a)*180/Math.PI,
         endAngle:Math.atan2(route.at(-1).y-route.at(-2).y,route.at(-1).x-route.at(-2).x)*180/Math.PI};
     });
@@ -61,6 +67,30 @@ test('preview data preserves directed topology and validates all group and port 
     expect(new Set(preview.edges.map(e=>e.group)).size).toBe(4);
   }
 });
+// Assert actual box transforms independently of the timing helper: shared groups
+// must still land one at a time, and reverse scrolling must replay the same order.
+for(const width of [1440,390])test(`boxes wait for the previous landing at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:width===1440?900:844});await ready(page);
+ for(let study=0;study<3;study++) {
+  const article=articles(page).nth(study);
+  const count=projectPreviews[String(study+1).padStart(2,'0')].nodes.length;
+  for(const index of [...Array(count).keys(),...Array(count).keys()].map((n,i)=>i<count?n:count-1-n)) {
+   await seek(article,.04+(index+.5)*.68/count);
+   const {nodes}=await drawing(article);
+   for(let i=0;i<count;i++) {
+    const n=nodes[i];
+    if(i<index) {expect(n.x).toBeCloseTo(n.config.x,2);expect(n.y).toBeCloseTo(n.config.y,2);expect(n.opacity).toBe(1);}
+    else if(i>index) {expect(n.x).toBeCloseTo(n.config.x+n.config.dx,2);expect(n.y).toBeCloseTo(n.config.y+n.config.dy,2);expect(n.opacity).toBe(0);}
+    else {
+     const remaining=Math.hypot(n.x-n.config.x,n.y-n.config.y)/Math.hypot(n.config.dx,n.config.dy);
+     expect(remaining).toBeGreaterThan(.45);expect(remaining).toBeLessThan(.55);
+     expect(n.opacity).toBeGreaterThan(.45);expect(n.opacity).toBeLessThan(.55);
+    }
+   }
+  }
+ }
+});
+
 for(const width of [1440,390])for(const theme of ['light','dark']) {
  test(`all three sequences: geometry, tip direction, complete graph and hold ${width} ${theme}`,async({page})=>{
   await page.setViewportSize({width,height:width===1440?900:844});
@@ -78,17 +108,26 @@ for(const width of [1440,390])for(const theme of ['light','dark']) {
       await seek(article,p);
       const state=await drawing(article);
       for(const n of state.nodes) {
-        const t=nodeProgress(state.p,n.group);
+        const t=nodeProgress(state.p,state.nodes.indexOf(n),state.nodes.length);
         expect(n.x).toBeCloseTo(n.config.x+n.config.dx*(1-t),2);
         expect(n.y).toBeCloseTo(n.config.y+n.config.dy*(1-t),2);
+        expect(n.opacity).toBeCloseTo(t,3);
       }
       for(const w of state.wires) {
-        expect(w.t).toBeCloseTo(wireProgress(state.p,w.group,w.lastNodeGroup),3);
+        expect(w.t).toBeCloseTo(wireProgress(state.p,w.sourceIndex,w.targetIndex,w.count),3);
         if(w.visible==='visible')expect(w.tipError).toBeLessThan(.15);
         else expect(Math.abs(w.t)).toBeLessThan(.00001);
-        if(wireProgress(state.p,w.group,w.lastNodeGroup)>.00001)expect(w.visible).toBe('visible');
+        if(wireProgress(state.p,w.sourceIndex,w.targetIndex,w.count)>.00001)expect(w.visible).toBe('visible');
         expect(w.portError).toBeLessThan(1);
-        if(w.t>.999)expect(w.angle).toBeCloseTo(w.endAngle,1);
+        const source=state.nodes[w.sourceIndex];
+        if(w.visible==='visible') {
+          expect(source.x).toBeCloseTo(source.config.x,4);
+          expect(source.y).toBeCloseTo(source.config.y,4);
+          expect(source.opacity).toBe(1);
+        }
+        if(source.opacity<1) {expect(w.t).toBe(0);expect(w.visible).toBe('hidden');}
+        if(w.t>=1)expect(w.angle).toBeCloseTo(w.endAngle,1);
+        else if(w.visible==='visible')expect(Math.abs(((w.angle-w.targetAngle+540)%360)-180)).toBeLessThan(.05);
       }
       if(p>=.805) {
         expect(state.phase).toBe('complete');expect(state.outside).toBe(0);
@@ -108,23 +147,32 @@ for(const width of [1440,390])for(const theme of ['light','dark']) {
  });
 }
 
-for(const width of [1440,390])test(`arrows advance while connected blocks travel; camera closes without clipping at ${width}`,async({page})=>{
+for(const width of [1440,390])test(`arrowheads directly target final destination ports from live sources; box sizes remain fixed without clipping at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:width===1440?900:844});await ready(page);
  for(let i=0;i<3;i++) {
   const article=articles(page).nth(i);
-  await seek(article,.08);const early=await drawing(article);
-  expect(early.wires.some(w=>w.t>0&&w.t<1&&w.visible==='visible')).toBe(true);
+  await seek(article,.22);const early=await drawing(article);
+  expect(early.wires.some(w=>w.t>0&&w.t<1&&w.visible==='visible'&&w.destinationGap>12)).toBe(true);
   expect(early.nodes.some(n=>Math.hypot(n.x-n.config.x,n.y-n.config.y)>20)).toBe(true);
   expect(early.outside).toBe(0);
   const opening=await article.locator(`.assembly-${width===390?'mobile':'desktop'}`).getAttribute('viewBox');
   await seek(article,.34);const moving=await drawing(article);
   expect(moving.wires.some(w=>w.t>0&&w.t<1)).toBe(true);
+  expect(moving.wires.some((w,i)=>Math.hypot(w.headX-early.wires[i].headX,w.headY-early.wires[i].headY)>12)).toBe(true);
   expect(moving.outside).toBe(0);
+  expect(moving.wires.map(w=>w.route)).not.toEqual(early.wires.map(w=>w.route));
   for(const w of moving.wires){expect(w.portError).toBeLessThan(1);if(w.visible==='visible')expect(w.tipError).toBeLessThan(.15);}
   await seek(article,.805);
-  expect(await article.locator(`.assembly-${width===390?'mobile':'desktop'}`).getAttribute('viewBox')).not.toBe(opening);
+  expect(await article.locator(`.assembly-${width===390?'mobile':'desktop'}`).getAttribute('viewBox')).toBe(opening);
   const final=await drawing(article);expect(final.outside).toBe(0);
-  await seek(article,.08);expect(await drawing(article)).toEqual(early);
+  expect(final.wires.map(w=>w.route)).not.toEqual(early.wires.map(w=>w.route));
+  for(let n=0;n<final.nodes.length;n++) {
+   expect(moving.nodes[n].width).toBeCloseTo(early.nodes[n].width,2);
+   expect(moving.nodes[n].height).toBeCloseTo(early.nodes[n].height,2);
+   expect(final.nodes[n].width).toBeCloseTo(early.nodes[n].width,2);
+   expect(final.nodes[n].height).toBeCloseTo(early.nodes[n].height,2);
+  }
+  await seek(article,.22);expect(await drawing(article)).toEqual(early);
  }
 });
 
@@ -203,6 +251,7 @@ for(const mode of ['no-js','reduce','failure'])test(`static complete graph and i
  expect(await a.locator('.assembly-mobile [data-assembly-node]').count()).toBe(5);
  expect(await a.locator('.assembly-mobile [data-assembly-head]').count()).toBe(4);
  for(const transform of await a.locator('.assembly-mobile [data-assembly-node]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('transform'))))expect(transform).not.toContain('NaN');
+ for(const opacity of await a.locator('.assembly-mobile [data-assembly-node]').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).opacity)))expect(opacity).toBe('1');
  await a.locator('[data-assembly-cta]').click();await expect(page).toHaveURL(/\/projects#project-01/);await context.close();
 });
 

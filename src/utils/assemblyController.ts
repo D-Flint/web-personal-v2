@@ -1,7 +1,7 @@
 import type { ProjectPreview } from '../data/projectPreviews';
-import { cacheRoute, clamp, movingRoute, nodePosition, phase, routePath, routeTip, sceneBounds, validatePreview, wireProgress } from './projectAssembly';
+import { cacheRoute, clamp, nodePosition, nodeProgress, phase, routePath, routeTip, sourceAnchoredRoute, sceneBounds, validatePreview, wireProgress } from './projectAssembly';
 
-type Wire = { path:SVGPathElement; head:SVGPathElement; group:number; lastNodeGroup:number; from:string; to:string; authored:ProjectPreview['edges'][number]['desktop']; length:number; route:ReturnType<typeof cacheRoute>; label:SVGTextElement|null };
+type Wire = { path:SVGPathElement; head:SVGPathElement; sourceIndex:number; targetIndex:number; from:string; authored:ProjectPreview['edges'][number]['desktop']; route:ReturnType<typeof cacheRoute>; label:SVGTextElement|null };
 type Layout = { svg:SVGSVGElement; nodes:SVGGElement[]; wires:Wire[]; kind:'desktop'|'mobile' };
 type Study = { article:HTMLElement; stage:HTMLElement; cta:HTMLAnchorElement; completion:HTMLElement;
   preview:ProjectPreview; layouts:Layout[]; enabled:boolean; failed:boolean; top:number; distance:number; inset:number; last:number };
@@ -30,30 +30,33 @@ export function initProjectAssemblies() {
     study.article.dataset.assemblyProgress=p.toFixed(6);
     study.article.dataset.assemblyPhase=phase(p);
     // Only the current responsive composition is written during scrolling. Both are
-    // restored for static mode. Moving ports and routes share the same positions.
+    // restored for static mode. Arrows launch from landed sources toward final ports.
     for(const layout of study.layouts) {
       if(study.enabled && !force && (layout.kind==='mobile')!==(innerWidth<=700)) continue;
       const current=study.enabled?p:1;
-      layout.svg.setAttribute('viewBox',sceneBounds(layout.kind,current).join(' '));
-      const positions=new Map(study.preview.nodes.map(node=>[node.id,nodePosition(node,layout.kind,current)]));
+      layout.svg.setAttribute('viewBox',sceneBounds(layout.kind).join(' '));
+      const positions=new Map(study.preview.nodes.map((node,index)=>[node.id,nodePosition(node,layout.kind,current,index,study.preview.nodes.length)]));
       layout.nodes.forEach((element,i)=>{
         const point=positions.get(study.preview.nodes[i].id)!;
         element.setAttribute('transform',`translate(${point.x} ${point.y})`);
+        element.style.opacity=String(nodeProgress(current,i,study.preview.nodes.length));
       });
       for(const wire of layout.wires) {
-        const t=study.enabled?wireProgress(p,wire.group,wire.lastNodeGroup):1;
-        const points=movingRoute(wire.authored,positions.get(wire.from)!,positions.get(wire.to)!);
-        const route=points===wire.authored?wire.route:cacheRoute(points);
+        const t=study.enabled?wireProgress(p,wire.sourceIndex,wire.targetIndex,study.preview.nodes.length):1;
+        // Advance directly toward the final target, using the live source only.
+        // There is no cached head trajectory and no live destination lookup.
+        const from=positions.get(wire.from)!;
+        const source={x:wire.authored[0].x+from.dx,y:wire.authored[0].y+from.dy};
+        const target=wire.authored.at(-1)!;
+        const tip={x:source.x+(target.x-source.x)*t,y:source.y+(target.y-source.y)*t,
+          angle:t<1?Math.atan2(target.y-source.y,target.x-source.x)*180/Math.PI:routeTip(wire.route,1).angle};
+        const points=sourceAnchoredRoute(wire.authored,from,{dx:tip.x-target.x,dy:tip.y-target.y});
         wire.path.setAttribute('d',routePath(points));
-        const length=route.length;
-        wire.path.style.strokeDasharray=`${length} ${length}`;
-        wire.path.style.strokeDashoffset=String(length*(1-t));
+        wire.path.dataset.assemblyWireProgress=String(t);
+        wire.path.style.visibility=t<=0?'hidden':'visible';
         wire.head.style.visibility=t<=0?'hidden':'visible';
         if(wire.label)wire.label.style.visibility=t>=1?'visible':'hidden';
-        if(t>0) {
-          const tip=routeTip(route,t);
-          wire.head.setAttribute('transform',`translate(${tip.x} ${tip.y}) rotate(${tip.angle})`);
-        }
+        wire.head.setAttribute('transform',`translate(${tip.x} ${tip.y}) rotate(${tip.angle})`);
       }
     }
     const complete=!study.enabled||p>=.8;
@@ -72,12 +75,14 @@ export function initProjectAssemblies() {
         const heads=Array.from(svg.querySelectorAll<SVGPathElement>('[data-assembly-head]'));
         if(nodes.length!==preview.nodes.length||paths.length!==preview.edges.length||heads.length!==paths.length) throw Error('Incomplete drawing');
         const wires=paths.map((path,i)=>{
-          const route=cacheRoute(preview.edges[i][svg.dataset.assemblyLayout as Layout['kind']]);
+          const edge=preview.edges[i];
+          const kind=svg.dataset.assemblyLayout as Layout['kind'];
+          const route=cacheRoute(edge[kind]);
           const length=route.length;
           if(!Number.isFinite(length)||length<=0) throw Error('Invalid route length');
-          const edge=preview.edges[i];
-          const lastNodeGroup=Math.max(...preview.nodes.filter(n=>n.id===edge.from||n.id===edge.to).map(n=>n.group));
-          return {path,head:heads[i],group:edge.group,lastNodeGroup,from:edge.from,to:edge.to,authored:edge[svg.dataset.assemblyLayout as Layout['kind']],length,route,label:path.parentElement!.querySelector<SVGTextElement>('[data-assembly-relationship]')};
+          const sourceIndex=preview.nodes.findIndex(n=>n.id===edge.from);
+          const targetIndex=preview.nodes.findIndex(n=>n.id===edge.to);
+          return {path,head:heads[i],sourceIndex,targetIndex,from:edge.from,authored:edge[svg.dataset.assemblyLayout as Layout['kind']],route,label:path.parentElement!.querySelector<SVGTextElement>('[data-assembly-relationship]')};
         });
         return {svg,nodes,wires,kind:svg.dataset.assemblyLayout as Layout['kind']};
       });
@@ -121,8 +126,8 @@ export function initProjectAssemblies() {
     const fits=studies.map(study=>{
       if(!study.enabled)return false;
       const svg=study.layouts.find(l=>(l.kind==='mobile')===(innerWidth<=700))!.svg;
-      const rect=svg.getBoundingClientRect(), bounds=sceneBounds(innerWidth<=700?'mobile':'desktop',0);
-      // Fit the widest/deepest opening as well as the finished graph.
+      const rect=svg.getBoundingClientRect(), bounds=sceneBounds(innerWidth<=700?'mobile':'desktop');
+      // Check label readability at the fixed finished-graph scale.
       const scale=Math.min(rect.width/bounds[2],rect.height/bounds[3]);
       const label=svg.querySelector('.assembly-primary')!;
       const font=parseFloat(getComputedStyle(label).fontSize)*scale;

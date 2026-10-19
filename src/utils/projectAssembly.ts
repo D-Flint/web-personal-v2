@@ -1,28 +1,37 @@
 import type { Point, ProjectPreview, PreviewNode } from '../data/projectPreviews';
 export const clamp = (value:number) => Math.max(0,Math.min(1,value));
 const smooth = (t:number) => t*t*(3-2*t);
-export const nodeStart = (group:number) => .04+group*.115;
-export const nodeEnd = (group:number) => nodeStart(group)+.335;
-// Overlapping arrivals keep depth and connections moving throughout the assembly.
-export const nodeProgress = (p:number,group:number) => smooth(clamp((p-nodeStart(group))/.335));
-export const wireProgress = (p:number,group:number,lastNodeGroup=group) => clamp((p-nodeStart(group))/(nodeEnd(lastNodeGroup)+.06-nodeStart(group)));
+const NODE_SEQUENCE_START = .04;
+const NODE_SEQUENCE_END = .72;
+export const nodeStart = (index:number,count:number) => NODE_SEQUENCE_START+index*(NODE_SEQUENCE_END-NODE_SEQUENCE_START)/count;
+export const nodeEnd = (index:number,count:number) => nodeStart(index+1,count);
+// A box owns one exclusive scroll interval; the next waits for its exact landing.
+export const nodeProgress = (p:number,index:number,count:number) => smooth(clamp((p-nodeStart(index,count))/(nodeEnd(index,count)-nodeStart(index,count))));
+// A connection can launch only from a fully landed source. Allow late-source
+// edges a final connecting interval before the complete-graph hold at 80%.
+export const wireProgress = (p:number,sourceIndex:number,targetIndex:number,count:number) => {
+  const start=nodeEnd(sourceIndex,count);
+  const end=Math.max(start,nodeEnd(targetIndex,count))+.06;
+  return clamp((p-start)/(end-start));
+};
 export const phase = (p:number) => p < .04 ? 'separated' : p < .72 ? 'assembling' : p < .8 ? 'connecting' : 'complete';
-export const sceneBounds = (kind:'desktop'|'mobile',p:number) => {
-  const start=kind==='desktop'?[-160,-110,1300,620]:[-18,-75,366,550];
-  const end=kind==='desktop'?[0,0,960,400]:[0,0,330,365];
-  const t=smooth(Math.pow(clamp((p-.04)/.74),2));
-  return start.map((n,i)=>n+(end[i]-n)*t);
+export const sceneBounds = (kind:'desktop'|'mobile') => kind==='desktop'?[0,0,960,400]:[0,0,330,365];
+export const nodePosition = (node:PreviewNode,kind:'desktop'|'mobile',p:number,index:number,count:number) => {
+  const n=node[kind],remaining=1-nodeProgress(p,index,count);
+  const [, ,width,height]=sceneBounds(kind);
+  // Keep arrivals inside the fixed frame now that the camera no longer zooms.
+  const inset=8;
+  const dx=Math.max(inset,Math.min(width-n.w-inset,n.x+n.dx))-n.x;
+  const dy=Math.max(inset,Math.min(height-n.h-inset,n.y+n.dy))-n.y;
+  return {x:n.x+dx*remaining,y:n.y+dy*remaining,dx:dx*remaining,dy:dy*remaining};
 };
-export const nodePosition = (node:PreviewNode,kind:'desktop'|'mobile',p:number) => {
-  const n=node[kind],remaining=1-nodeProgress(p,node.group);
-  return {x:n.x+n.dx*remaining,y:n.y+n.dy*remaining,dx:n.dx*remaining,dy:n.dy*remaining};
-};
-// Preserve orthogonal route topology while both endpoint blocks are moving. Each
-// constant-coordinate run shares one displacement; endpoint runs follow their ports.
-export function movingRoute(authored:Point[],from:{dx:number;dy:number},to:{dx:number;dy:number}) {
+// Route between the live source port and an independently positioned head.
+// Move whole constant-coordinate runs together to preserve orthogonal routing.
+export function sourceAnchoredRoute(authored:Point[],from:{dx:number;dy:number},to={dx:0,dy:0}) {
   if(!from.dx&&!from.dy&&!to.dx&&!to.dy)return authored;
   const first=authored[0],last=authored.at(-1)!;
-  const source={x:first.x+from.dx,y:first.y+from.dy},target={x:last.x+to.dx,y:last.y+to.dy};
+  const target={x:last.x+to.dx,y:last.y+to.dy};
+  const source={x:first.x+from.dx,y:first.y+from.dy};
   if(authored.every(p=>p.y===first.y)) {
     const mid=(source.x+target.x)/2;
     return [source,{x:mid,y:source.y},{x:mid,y:target.y},target];
@@ -95,3 +104,4 @@ export function routeTip(route:ReturnType<typeof cacheRoute>,t:number) {
   const f=clamp((distance-segment.start)/segment.size);
   return {x:segment.from.x+(segment.to.x-segment.from.x)*f,y:segment.from.y+(segment.to.y-segment.from.y)*f,angle:segment.angle};
 }
+
