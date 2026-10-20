@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { cacheRoute, nodeProgress, routeTip, sourceAnchoredRoute, wireProgress, validatePreview } from '../src/utils/projectAssembly';
+import { cacheRoute, createAssemblyTimeline, intervalProgress, nodeProgress, routeTip, validatePreview } from '../src/utils/projectAssembly';
 import { projectPreviews } from '../src/data/projectPreviews';
 
 const articles = (page:Page) => page.locator('[data-project-assembly]');
@@ -42,7 +42,7 @@ async function drawing(article:Locator) {
       const from=svg.querySelector<SVGGElement>(`[data-assembly-node="${edge.from}"]`)!;
       const source=new DOMPoint(route[0].x-fromNode[kind].x,route[0].y-fromNode[kind].y).matrixTransform(from.getScreenCTM()!);
       const start=path.getPointAtLength(0).matrixTransform(ctm);
-      return {authored:route,trailLength:length,headX:hm.e,headY:hm.f,destinationGap:Math.hypot(hm.e-route.at(-1).x,hm.f-route.at(-1).y),route: path.getAttribute('d'),t,tipError:Math.hypot(point.x-hm.e,point.y-hm.f),visible:getComputedStyle(head).visibility,sourceIndex:preview.nodes.indexOf(fromNode),targetIndex:preview.nodes.indexOf(toNode),count:preview.nodes.length,
+      return {authored:route,trailLength:length,headX:hm.e,headY:hm.f,destinationGap:Math.hypot(hm.e-route.at(-1).x,hm.f-route.at(-1).y),route: path.getAttribute('d'),t,tipError:Math.hypot(point.x-hm.e,point.y-hm.f),visible:getComputedStyle(head).visibility,sourceIndex:preview.nodes.indexOf(fromNode),targetIndex:preview.nodes.indexOf(toNode),
         portError:Math.hypot(source.x-start.x,source.y-start.y),angle:Math.atan2(hm.b,hm.a)*180/Math.PI,
         endAngle:Math.atan2(route.at(-1).y-route.at(-2).y,route.at(-1).x-route.at(-2).x)*180/Math.PI};
     });
@@ -52,13 +52,13 @@ async function drawing(article:Locator) {
     const outside=Array.from(svg.querySelectorAll<SVGGraphicsElement>('text,rect,[data-assembly-head]')).filter(e=>{
       const b=e.getBoundingClientRect();return b.left<svgRect.left-1||b.right>svgRect.right+1||b.top<svgRect.top-1||b.bottom>svgRect.bottom+1;
     }).length;
-    return {p,nodes,wires,labels,outside,phase:(el as HTMLElement).dataset.assemblyPhase};
+    return {id:(el as HTMLElement).dataset.projectAssembly!,p,nodes,wires,labels,outside,phase:(el as HTMLElement).dataset.assemblyPhase};
   });
-  return {...state,wires:state.wires.map(wire=>{
-    const source=state.nodes[wire.sourceIndex];
-    const route=cacheRoute(sourceAnchoredRoute(wire.authored,{dx:source.x-source.config.x,dy:source.y-source.config.y}));
+  const timeline=createAssemblyTimeline(projectPreviews[state.id]);
+  return {...state,nodes:state.nodes.map((node,index)=>({...node,interval:timeline.nodes[index]})),wires:state.wires.map((wire,index)=>{
+    const route=cacheRoute(wire.authored);
     const tip=routeTip(route,wire.t);
-    return {...wire,targetAngle:tip.angle,expectedHeadError:Math.hypot(wire.headX-tip.x,wire.headY-tip.y),expectedLength:route.length*wire.t};
+    return {...wire,interval:timeline.wires[index],targetAngle:tip.angle,expectedHeadError:Math.hypot(wire.headX-tip.x,wire.headY-tip.y),expectedLength:route.length*wire.t};
   })};
 }
 
@@ -70,45 +70,53 @@ test('preview data preserves directed topology and validates all group and port 
     expect(new Set(preview.edges.map(e=>e.group)).size).toBe(4);
   }
 });
-// Assert actual box transforms independently of the timing helper: shared groups
-// must still land one at a time, and reverse scrolling must replay the same order.
-for(const width of [1440,390])test(`boxes wait for the previous landing at ${width}`,async({page})=>{
+test('attention timeline has no competing motion and completes each relationship before the next arrival',()=>{
+ for(const id of ['01','04','03']) {
+  const preview=projectPreviews[id],timeline=createAssemblyTimeline(preview);
+  const events=[...timeline.nodes,...timeline.wires].sort((a,b)=>a.start-b.start);
+  expect(events[0].start).toBe(.04);
+  expect(events.at(-1)!.end).toBeLessThan(.8);
+  for(let i=1;i<events.length;i++)expect(events[i].start).toBeGreaterThanOrEqual(events[i-1].end-1e-10);
+  preview.edges.forEach((edge,i)=>{
+   const from=preview.nodes.findIndex(n=>n.id===edge.from),to=preview.nodes.findIndex(n=>n.id===edge.to);
+   expect(from).toBeLessThan(to);
+   expect(timeline.wires[i].start).toBeGreaterThanOrEqual(timeline.nodes[from].end);
+   expect(timeline.wires[i].start).toBeGreaterThanOrEqual(timeline.nodes[to].end);
+   if(to+1<preview.nodes.length)expect(timeline.wires[i].end).toBeLessThan(timeline.nodes[to+1].start);
+  });
+ }
+});
+
+// Sample actual rendered states in both directions: a connector must finish
+// before attention moves on, and branching connections must take separate turns.
+for(const width of [1440,390])test(`one focal event at a time in forward and reverse scroll at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:width===1440?900:844});await ready(page);
  for(let study=0;study<3;study++) {
   const article=articles(page).nth(study);
-  const count=projectPreviews[(await article.getAttribute('data-project-assembly'))!].nodes.length;
-  for(const index of [...Array(count).keys(),...Array(count).keys()].map((n,i)=>i<count?n:count-1-n)) {
-   await seek(article,.04+(index+.4)*.68/count);
-   const {nodes}=await drawing(article);
-   for(let i=0;i<count;i++) {
-    const n=nodes[i];
-    if(i<index) {expect(n.x).toBeCloseTo(n.config.x,2);expect(n.y).toBeCloseTo(n.config.y,2);expect(n.opacity).toBe(1);}
-    else if(i>index) {expect(n.x).toBeCloseTo(n.config.x+n.config.dx,2);expect(n.y).toBeCloseTo(n.config.y+n.config.dy,2);expect(n.opacity).toBe(0);}
-    else {
-     const remaining=Math.hypot(n.x-n.config.x,n.y-n.config.y)/Math.hypot(n.config.dx,n.config.dy);
-     expect(remaining).toBeGreaterThan(.45);expect(remaining).toBeLessThan(.55);
-     expect(n.opacity).toBeGreaterThan(.45);expect(n.opacity).toBeLessThan(.55);
+  const preview=projectPreviews[(await article.getAttribute('data-project-assembly'))!];
+  const timeline=createAssemblyTimeline(preview);
+  const samples=[...timeline.nodes,...timeline.wires].map(event=>(event.start+event.end)/2).sort((a,b)=>a-b);
+  for(const p of [...samples,...samples.toReversed()]) {
+   await seek(article,p);
+   const state=await drawing(article);
+   const movingNodes=state.nodes.filter(n=>n.opacity>0&&n.opacity<1);
+   const movingWires=state.wires.filter(w=>w.t>0&&w.t<1);
+   expect(movingNodes.length+movingWires.length).toBe(1);
+   expect(await article.locator(`.assembly-${width===390?'mobile':'desktop'} [data-assembly-active]`).count()).toBe(movingWires.length);
+   for(const [index,n] of state.nodes.entries()) {
+    if(state.p>=timeline.nodes[index].end) {
+     expect(n.x).toBeCloseTo(n.config.x,3);expect(n.y).toBeCloseTo(n.config.y,3);expect(n.opacity).toBe(1);
+    } else if(state.p<=timeline.nodes[index].start) {
+     expect(n.x).toBeCloseTo(n.config.x+n.config.dx,3);expect(n.y).toBeCloseTo(n.config.y+n.config.dy,3);expect(n.opacity).toBe(0);
     }
    }
-   for(const wire of (await drawing(article)).wires) {
-    const started=Math.max(wire.sourceIndex,wire.targetIndex)<index;
-    expect(wire.t>0).toBe(started);
-    expect(wire.visible).toBe(started?'visible':'hidden');
+   for(const w of movingWires)for(const index of [w.sourceIndex,w.targetIndex]) {
+    expect(state.nodes[index].opacity).toBe(1);
+    expect(state.nodes[index].x).toBeCloseTo(state.nodes[index].config.x,3);
+    expect(state.nodes[index].y).toBeCloseTo(state.nodes[index].config.y,3);
    }
-   // Leave a settled interval before the next block starts, in either direction.
-   await seek(article,.04+(index+.9)*.68/count);
-   const settled=await drawing(article);
-   for(let i=0;i<count;i++) {
-    const n=settled.nodes[i],landed=i<=index;
-    expect(n.x).toBeCloseTo(n.config.x+(landed?0:n.config.dx),2);
-    expect(n.y).toBeCloseTo(n.config.y+(landed?0:n.config.dy),2);
-    expect(n.opacity).toBe(landed?1:0);
-   }
-   for(const wire of settled.wires) {
-    const started=Math.max(wire.sourceIndex,wire.targetIndex)<=index;
-    expect(wire.t>0).toBe(started);
-    expect(wire.visible).toBe(started?'visible':'hidden');
-   }
+   // Every visible completed path remains connected while the current one advances.
+   for(const w of state.wires.filter(w=>w.t>0))expect(w.portError).toBeLessThan(1);
   }
  }
 });
@@ -130,21 +138,20 @@ for(const width of [1440,390])for(const theme of ['light','dark']) {
       await seek(article,p);
       const state=await drawing(article);
       for(const n of state.nodes) {
-        const t=nodeProgress(state.p,state.nodes.indexOf(n),state.nodes.length);
+        const t=nodeProgress(state.p,n.interval);
         expect(n.x).toBeCloseTo(n.config.x+n.config.dx*(1-t),2);
         expect(n.y).toBeCloseTo(n.config.y+n.config.dy*(1-t),2);
         expect(n.opacity).toBeCloseTo(t,3);
       }
       for(const w of state.wires) {
-        expect(w.t).toBeCloseTo(wireProgress(state.p,w.sourceIndex,w.targetIndex,w.count),3);
+        expect(w.t).toBeCloseTo(intervalProgress(state.p,w.interval),3);
         if(w.visible==='visible')expect(w.tipError).toBeLessThan(.15);
         else expect(Math.abs(w.t)).toBeLessThan(.00001);
-        if(wireProgress(state.p,w.sourceIndex,w.targetIndex,w.count)>.00001)expect(w.visible).toBe('visible');
-        expect(w.portError).toBeLessThan(1);
+        if(intervalProgress(state.p,w.interval)>.00001)expect(w.visible).toBe('visible');
+        if(w.visible==='visible')expect(w.portError).toBeLessThan(1);
         expect(w.expectedHeadError).toBeLessThan(.001);
         expect(w.trailLength).toBeCloseTo(w.expectedLength,2);
-        const arrivingIndex=Math.max(w.sourceIndex,w.targetIndex);
-        const landing=.04+(arrivingIndex+.8)*.68/w.count;
+        const landing=Math.max(state.nodes[w.sourceIndex].interval.end,state.nodes[w.targetIndex].interval.end);
         if(state.p<=landing) {expect(w.t).toBe(0);expect(w.visible).toBe('hidden');}
         if(w.visible==='visible') {
           for(const index of [w.sourceIndex,w.targetIndex]) {
@@ -175,27 +182,25 @@ for(const width of [1440,390])for(const theme of ['light','dark']) {
  });
 }
 
-for(const width of [1440,390])test(`arrowheads follow predefined route bends from live sources; box sizes remain fixed without clipping at ${width}`,async({page})=>{
+for(const width of [1440,390])test(`arrowheads follow predefined route bends between landed blocks; box sizes remain fixed without clipping at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:width===1440?900:844});await ready(page);
  for(let i=0;i<3;i++) {
   const article=articles(page).nth(i);
   const preview=projectPreviews[(await article.getAttribute('data-project-assembly'))!];
-  const firstArrival=Math.min(...preview.edges.map(edge=>Math.max(
-    preview.nodes.findIndex(node=>node.id===edge.from),preview.nodes.findIndex(node=>node.id===edge.to))));
-  const slot=.68/preview.nodes.length;
-  const firstLanding=.04+(firstArrival+.8)*slot;
-  const earlyProgress=firstLanding+.015;
+  const interval=createAssemblyTimeline(preview).wires[0];
+  const firstLanding=interval.start;
+  const earlyProgress=firstLanding+(interval.end-firstLanding)*.25;
   await seek(article,earlyProgress);const early=await drawing(article);
   expect(early.wires.some(w=>w.t>0&&w.t<1&&w.visible==='visible'&&w.destinationGap>12)).toBe(true);
   expect(early.nodes.some(n=>n.opacity===0)).toBe(true);
   expect(early.outside).toBe(0);
   const opening=await article.locator(`.assembly-${width===390?'mobile':'desktop'}`).getAttribute('viewBox');
-  await seek(article,firstLanding+.045);const moving=await drawing(article);
+  await seek(article,firstLanding+(interval.end-firstLanding)*.75);const moving=await drawing(article);
   expect(moving.wires.some(w=>w.t>0&&w.t<1)).toBe(true);
   expect(moving.wires.some((w,i)=>Math.hypot(w.headX-early.wires[i].headX,w.headY-early.wires[i].headY)>12)).toBe(true);
   expect(moving.outside).toBe(0);
   expect(moving.wires.map(w=>w.route)).not.toEqual(early.wires.map(w=>w.route));
-  for(const w of moving.wires){expect(w.portError).toBeLessThan(1);if(w.visible==='visible')expect(w.tipError).toBeLessThan(.15);}
+  for(const w of moving.wires.filter(w=>w.visible==='visible')){expect(w.portError).toBeLessThan(1);expect(w.tipError).toBeLessThan(.15);}
   await seek(article,.805);
   expect(await article.locator(`.assembly-${width===390?'mobile':'desktop'}`).getAttribute('viewBox')).toBe(opening);
   const final=await drawing(article);expect(final.outside).toBe(0);
@@ -235,7 +240,7 @@ test('handoff, rapid destination jumps, keyboard completion and matching catalog
 test('wheel, PageDown, End and real CDP touch gestures drive assembly without interception',async({browser,page})=>{
  await page.setViewportSize({width:1440,height:900});await ready(page);const first=articles(page).first();await seek(first,.1);
  await page.mouse.move(700,450);await page.mouse.wheel(0,250);
- await expect.poll(async()=>Number(await first.getAttribute('data-assembly-progress'))).toBeGreaterThan(.15);
+ await expect.poll(async()=>Number(await first.getAttribute('data-assembly-progress'))).toBeGreaterThan(.12);
  const p=Number(await first.getAttribute('data-assembly-progress'));await page.keyboard.press('PageDown');
  await expect.poll(async()=>Number(await first.getAttribute('data-assembly-progress'))).toBeGreaterThan(p);
  await page.keyboard.press('End');await expect(page.locator('#contact')).toBeInViewport();
@@ -244,7 +249,7 @@ test('wheel, PageDown, End and real CDP touch gestures drive assembly without in
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:180,y:650}]});
  for(let y=620;y>=250;y-=30){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:180,y}]});await phone.waitForTimeout(16);}
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
- await expect.poll(async()=>Number(await a.getAttribute('data-assembly-progress'))).toBeGreaterThan(.2);
+ await expect.poll(async()=>Number(await a.getAttribute('data-assembly-progress'))).toBeGreaterThan(.13);
  await expect(a).toHaveAttribute('data-assembly-enhanced','true');await context.close();
 });
 
@@ -271,6 +276,59 @@ test('resize mid-sequence recomputes from position and idle produces no assembly
  await seek(a,.625);expect(Math.max(...(await drawing(a)).wires.filter(w=>w.t>0).map(w=>w.tipError))).toBeLessThan(.15);
  const mutations=await a.evaluate(async el=>{let n=0;const o=new MutationObserver(m=>n+=m.length);o.observe(el,{attributes:true,subtree:true});await new Promise(r=>setTimeout(r,250));o.disconnect();return n;});expect(mutations).toBe(0);
  await page.setViewportSize({width:844,height:390});await expect(a).toHaveAttribute('data-assembly-fallback','fit');
+});
+
+for(const width of [1440,390])test(`completed schematics loop directed data packets with lifecycle suspension at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:width===1440?900:844});await ready(page);
+ const kind=width===390?'mobile':'desktop';
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+ for(let i=0;i<3;i++) {
+  const article=articles(page).nth(i);
+  await seek(article,.6);await expect(article).not.toHaveAttribute('data-assembly-flow');
+  await expect(article.locator('[data-assembly-flow-toggle]')).toHaveCount(0);
+  await seek(article,.9);await expect(article).toHaveAttribute('data-assembly-flow','');
+  const packets=article.locator(`.assembly-${kind} [data-assembly-packet]`);
+  await expect.poll(()=>packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0]?.playState==='running'))).toBe(true);
+  const geometry=await drawing(article);
+  // Sample an actual complete cycle. The packet travels source to destination,
+  // reaches every edge in sequence, then returns to the first without scrolling.
+  const sample=await packets.evaluateAll(paths=>{
+   const animations=paths.map(path=>path.getAnimations()[0]);
+   const duration=Number(animations[0].effect!.getTiming().duration);
+   const snapshots=[.25,.65,1.3,2.38,3.46,4.54,5.62,6.7].map(seconds=>{
+    animations.forEach(animation=>{animation.pause();animation.currentTime=seconds*1000;});
+    return paths.map(path=>({opacity:Number(getComputedStyle(path).opacity),offset:parseFloat(getComputedStyle(path).strokeDashoffset)}));
+   });
+   animations.forEach(animation=>animation.currentTime=duration+250);
+   const repeated=paths.map(path=>({opacity:Number(getComputedStyle(path).opacity),offset:parseFloat(getComputedStyle(path).strokeDashoffset)}));
+   animations.forEach(animation=>{animation.currentTime=0;animation.play();});
+   return {snapshots,repeated};
+  });
+  expect(sample.snapshots[0][0].opacity).toBe(1);
+  expect(sample.snapshots[1][0].offset).toBeLessThan(sample.snapshots[0][0].offset);
+  expect(sample.repeated).toEqual(sample.snapshots[0]);
+  for(let edge=0;edge<await packets.count();edge++)expect(sample.snapshots.some(snapshot=>snapshot[edge].opacity===1)).toBe(true);
+  for(const snapshot of sample.snapshots)expect(snapshot.filter(packet=>packet.opacity>0).length).toBeLessThanOrEqual(1);
+  await page.waitForTimeout(150);
+  expect(await drawing(article)).toEqual(geometry);
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+  await expect.poll(()=>packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='paused'))).toBe(true);
+  await page.waitForTimeout(40);
+  const paused=await packets.evaluateAll(paths=>paths.map(path=>path.getAnimations()[0].currentTime));
+  await page.waitForTimeout(150);expect(await packets.evaluateAll(paths=>paths.map(path=>path.getAnimations()[0].currentTime))).toEqual(paused);
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
+  await expect.poll(()=>packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='running'))).toBe(true);
+  await seek(article,.6);await expect(article).not.toHaveAttribute('data-assembly-flow');
+  expect(await packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='paused'&&path.getAnimations()[0].currentTime===0))).toBe(true);
+  await seek(article,.9);await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
+  await expect.poll(()=>packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='paused'))).toBe(true);
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await expect(articles(page).first()).toHaveAttribute('data-assembly-fallback','reduced-motion');
+ expect(await page.locator('[data-assembly-packet]').evaluateAll(paths=>paths.every(path=>getComputedStyle(path).display==='none'&&path.getAnimations().every(animation=>animation.playState==='paused')))).toBe(true);
+ await expect(page.locator('[data-assembly-flow-toggle]:visible')).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect(errors).toEqual([]);
 });
 
 for(const mode of ['no-js','reduce','failure'])test(`static complete graph and immediate CTA with ${mode}`,async({browser})=>{

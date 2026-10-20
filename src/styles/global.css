@@ -1796,7 +1796,6 @@ body:has(dialog:modal) {
 @media (max-width: 700px) {
   .hero-particle {
     padding-block: 18px 48px;
-    min-height: 0;
   }
   .hero-pixel-field {
     height: 240px;
@@ -2073,7 +2072,7 @@ textarea[aria-invalid='true']:focus {
 
 /* Home-only assembly studies. Catalog studies keep their own drafting controller. */
 .project-assembly {
-  --assembly-screens: 4;
+  --assembly-screens: 8;
   --assembly-inset: max(12px, env(safe-area-inset-top));
   position: relative;
   border-bottom: 1px solid var(--line);
@@ -2143,7 +2142,27 @@ textarea[aria-invalid='true']:focus {
 .assembly-detail { fill: var(--muted); font: 12px Inter, sans-serif; }
 .assembly-port { fill: var(--paper); stroke: var(--blue); stroke-width: 1.3; }
 .assembly-connections { stroke: var(--blue); stroke-width: 1.6; stroke-linejoin: round; }
+/* Completed connections recede; the one advancing head carries attention. */
+[data-assembly-enhanced] .assembly-connections { stroke: var(--muted); }
+[data-assembly-enhanced] [data-assembly-active] { stroke: var(--blue); stroke-width: 2; }
+[data-assembly-enhanced] [data-assembly-focus] .assembly-node-box {
+  stroke: var(--blue);
+  stroke-width: 1.8;
+  fill: color-mix(in srgb, var(--blue) 7%, var(--paper));
+}
+[data-assembly-enhanced] [data-assembly-focus] .assembly-primary { fill: var(--blue); }
 .assembly-arrow { stroke-width: 1.8; }
+.assembly-flow-packet {
+  display: none;
+  pointer-events: none;
+  stroke: var(--blue);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: .06 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+[data-assembly-flow] .assembly-flow-packet { display: block; }
 .assembly-relationship { fill: var(--muted); stroke: none; font: 12px Inter, sans-serif; }
 .assembly-completion { min-height: 46px; display: flex; align-items: center; padding-right: 44px; }
 .assembly-completion .text-link { min-height: 44px; font-size: .92rem; }
@@ -2192,6 +2211,7 @@ textarea[aria-invalid='true']:focus {
   [data-assembly-enhanced] .assembly-stage { padding-block: 16px 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .assembly-flow-packet { display: none !important; }
   .project-assembly[data-assembly-enhanced] { height: auto; }
   [data-assembly-enhanced] .assembly-stage { position: static; height: auto; }
   [data-assembly-enhanced] .assembly-diagram { aspect-ratio: 960 / 400; }

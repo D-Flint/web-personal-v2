@@ -23,6 +23,7 @@ const endTransform = (points: {x:number;y:number}[]) => {
           {preview.edges.map(edge => (
             <g data-assembly-connection={edge.id}>
               <path data-assembly-wire={edge.id} d={routePath(edge[layout])} />
+              <path class="assembly-flow-packet" data-assembly-packet={edge.id} d={routePath(edge[layout])} pathLength="1" aria-hidden="true" />
               <path class="assembly-arrow" data-assembly-head={edge.id} d="M-7 -4 L0 0 L-7 4" transform={endTransform(edge[layout])} />
               {edge.label && edge.labelAt && <text class="assembly-relationship" data-assembly-relationship x={edge.labelAt[layout].x} y={edge.labelAt[layout].y}>{edge.label}</text>}
             </g>

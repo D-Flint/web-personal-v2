@@ -1,10 +1,14 @@
 import type { ProjectPreview } from '../data/projectPreviews';
-import { cacheRoute, clamp, nodePosition, nodeProgress, phase, routePath, routeTip, sourceAnchoredRoute, sceneBounds, validatePreview, wireProgress } from './projectAssembly';
+import { cacheRoute, clamp, createAssemblyTimeline, intervalProgress, nodePosition, nodeProgress, phase, routePath, routeTip, sceneBounds, validatePreview } from './projectAssembly';
 
-type Wire = { path:SVGPathElement; head:SVGPathElement; sourceIndex:number; targetIndex:number; from:string; authored:ProjectPreview['edges'][number]['desktop']; route:ReturnType<typeof cacheRoute>; label:SVGTextElement|null };
-type Layout = { svg:SVGSVGElement; nodes:SVGGElement[]; wires:Wire[]; kind:'desktop'|'mobile' };
+type Wire = { path:SVGPathElement; head:SVGPathElement; targetIndex:number; authored:ProjectPreview['edges'][number]['desktop']; route:ReturnType<typeof cacheRoute>; label:SVGTextElement|null };
+type Layout = { svg:SVGSVGElement; nodes:SVGGElement[]; wires:Wire[]; packets:SVGPathElement[]; animations:Animation[]; kind:'desktop'|'mobile' };
 type Study = { article:HTMLElement; stage:HTMLElement; cta:HTMLAnchorElement; completion:HTMLElement;
-  preview:ProjectPreview; layouts:Layout[]; enabled:boolean; failed:boolean; top:number; distance:number; inset:number; last:number };
+  visible:boolean;
+  preview:ProjectPreview; timeline:ReturnType<typeof createAssemblyTimeline>; layouts:Layout[]; enabled:boolean; failed:boolean; top:number; distance:number; inset:number; last:number };
+const FLOW_TRAVEL_MS=900;
+const FLOW_GAP_MS=180;
+const FLOW_REST_MS=900;
 let dispose: (()=>void) | undefined;
 export function initProjectAssemblies() {
   dispose?.();
@@ -15,6 +19,39 @@ export function initProjectAssemblies() {
   let frame=0, dirty=true, measuring=false;
   let width=innerWidth, height=innerHeight;
   const on=(target:EventTarget,event:string,handler:EventListenerOrEventListenerObject) => target.addEventListener(event,handler,{signal,passive:true});
+  function syncFlow(study:Study) {
+    const complete=study.enabled&&study.last>=.8&&!reduced.matches;
+    study.article.toggleAttribute('data-assembly-flow',complete);
+    for(const layout of study.layouts) {
+      const running=complete&&study.visible&&!document.hidden&&
+        (layout.kind==='mobile')===(innerWidth<=700);
+      // Browser-owned dash animations leave the scroll geometry untouched and
+      // pause without per-frame JS work when the stage is hidden or offscreen.
+      if(running&&!layout.animations.length) {
+        const order=study.timeline.wires.map((interval,index)=>({start:interval.start,index})).sort((a,b)=>a.start-b.start);
+        const duration=order.length*(FLOW_TRAVEL_MS+FLOW_GAP_MS)+FLOW_REST_MS;
+        for(const [slot,{index}] of order.entries()) {
+          const start=slot*(FLOW_TRAVEL_MS+FLOW_GAP_MS)/duration;
+          const end=start+FLOW_TRAVEL_MS/duration;
+          const animation=layout.packets[index].animate([
+            {offset:0,strokeDashoffset:'1',opacity:0},
+            {offset:start,strokeDashoffset:'1',opacity:0},
+            {offset:start+.008,strokeDashoffset:'.94',opacity:1},
+            {offset:end-.008,strokeDashoffset:'0',opacity:1},
+            {offset:end,strokeDashoffset:'-.06',opacity:0},
+            {offset:1,strokeDashoffset:'-.06',opacity:0},
+          ],{duration,iterations:Infinity,easing:'linear'});
+          animation.currentTime=0;
+          layout.animations.push(animation);
+        }
+      }
+      for(const animation of layout.animations) {
+        if(running&&animation.playState!=='running')animation.play();
+        else if(!running&&animation.playState!=='paused')animation.pause();
+        if(!complete)animation.currentTime=0;
+      }
+    }
+  }
   function restore(study:Study, reason:string) {
     study.enabled=false;
     study.article.removeAttribute('data-assembly-enhanced');
@@ -30,23 +67,27 @@ export function initProjectAssemblies() {
     study.article.dataset.assemblyProgress=p.toFixed(6);
     study.article.dataset.assemblyPhase=phase(p);
     // Only the current responsive composition is written during scrolling. Both are
-    // restored for static mode. Arrows wait for both blocks to land before following their route.
+    // restored for static mode. Each arrival and connector has an exclusive interval.
     for(const layout of study.layouts) {
       if(study.enabled && !force && (layout.kind==='mobile')!==(innerWidth<=700)) continue;
       const current=study.enabled?p:1;
       layout.svg.setAttribute('viewBox',sceneBounds(layout.kind).join(' '));
-      const positions=new Map(study.preview.nodes.map((node,index)=>[node.id,nodePosition(node,layout.kind,current,index,study.preview.nodes.length)]));
+      const positions=new Map(study.preview.nodes.map((node,index)=>[node.id,nodePosition(node,layout.kind,current,study.timeline.nodes[index])]));
+      const activeWire=study.enabled?study.timeline.wires.findIndex(interval=>p>interval.start&&p<interval.end):-1;
       layout.nodes.forEach((element,i)=>{
         const point=positions.get(study.preview.nodes[i].id)!;
         element.setAttribute('transform',`translate(${point.x} ${point.y})`);
-        element.style.opacity=String(nodeProgress(current,i,study.preview.nodes.length));
+        const progress=nodeProgress(current,study.timeline.nodes[i]);
+        element.style.opacity=String(progress);
+        const focused=study.enabled&&((progress>0&&progress<1)||(activeWire>=0&&layout.wires[activeWire].targetIndex===i));
+        element.toggleAttribute('data-assembly-focus',focused);
       });
-      for(const wire of layout.wires) {
-        const t=study.enabled?wireProgress(p,wire.sourceIndex,wire.targetIndex,study.preview.nodes.length):1;
-        // Follow the authored bends, keeping the route attached to its live source.
-        const from=positions.get(wire.from)!;
-        const points=sourceAnchoredRoute(wire.authored,from);
-        const route=from.dx||from.dy?cacheRoute(points):wire.route;
+      for(const [index,wire] of layout.wires.entries()) {
+        const t=study.enabled?intervalProgress(p,study.timeline.wires[index]):1;
+        // Both endpoints are settled throughout this exclusive connection interval.
+        const points=wire.authored;
+        const route=wire.route;
+        wire.path.parentElement!.toggleAttribute('data-assembly-active',study.enabled&&t>0&&t<1);
         const tip=routeTip(route,t);
         const distance=t*route.length;
         const trail=t>=1?points:[points[0],...route.segments
@@ -64,6 +105,7 @@ export function initProjectAssemblies() {
     study.completion.style.visibility=complete?'visible':'hidden';
     if(complete) {study.cta.removeAttribute('tabindex');study.cta.removeAttribute('aria-hidden');}
     else {study.cta.tabIndex=-1;study.cta.setAttribute('aria-hidden','true');}
+    syncFlow(study);
   }
   for(const article of document.querySelectorAll<HTMLElement>('[data-project-assembly]')) {
     try {
@@ -74,20 +116,20 @@ export function initProjectAssemblies() {
         const nodes=Array.from(svg.querySelectorAll<SVGGElement>('[data-assembly-node]'));
         const paths=Array.from(svg.querySelectorAll<SVGPathElement>('[data-assembly-wire]'));
         const heads=Array.from(svg.querySelectorAll<SVGPathElement>('[data-assembly-head]'));
-        if(nodes.length!==preview.nodes.length||paths.length!==preview.edges.length||heads.length!==paths.length) throw Error('Incomplete drawing');
+        const packets=Array.from(svg.querySelectorAll<SVGPathElement>('[data-assembly-packet]'));
+        if(nodes.length!==preview.nodes.length||paths.length!==preview.edges.length||heads.length!==paths.length||packets.length!==paths.length) throw Error('Incomplete drawing');
         const wires=paths.map((path,i)=>{
           const edge=preview.edges[i];
           const kind=svg.dataset.assemblyLayout as Layout['kind'];
           const route=cacheRoute(edge[kind]);
           const length=route.length;
           if(!Number.isFinite(length)||length<=0) throw Error('Invalid route length');
-          const sourceIndex=preview.nodes.findIndex(n=>n.id===edge.from);
           const targetIndex=preview.nodes.findIndex(n=>n.id===edge.to);
-          return {path,head:heads[i],sourceIndex,targetIndex,from:edge.from,authored:edge[svg.dataset.assemblyLayout as Layout['kind']],route,label:path.parentElement!.querySelector<SVGTextElement>('[data-assembly-relationship]')};
+          return {path,head:heads[i],targetIndex,authored:edge[svg.dataset.assemblyLayout as Layout['kind']],route,label:path.parentElement!.querySelector<SVGTextElement>('[data-assembly-relationship]')};
         });
-        return {svg,nodes,wires,kind:svg.dataset.assemblyLayout as Layout['kind']};
+        return {svg,nodes,wires,packets,animations:[],kind:svg.dataset.assemblyLayout as Layout['kind']};
       });
-      const study:Study={article,preview,layouts,stage:article.querySelector('[data-assembly-stage]')!,cta:article.querySelector('[data-assembly-cta]')!,completion:article.querySelector('[data-assembly-completion]')!,enabled:false,failed:false,top:0,distance:0,inset:0,last:-1};
+      const study:Study={article,preview,timeline:createAssemblyTimeline(preview),layouts,stage:article.querySelector('[data-assembly-stage]')!,cta:article.querySelector('[data-assembly-cta]')!,completion:article.querySelector('[data-assembly-completion]')!,visible:false,enabled:false,failed:false,top:0,distance:0,inset:0,last:-1};
       studies.push(study);
       const finish=()=>{
         if(!study.enabled)return;
@@ -172,10 +214,17 @@ export function initProjectAssemblies() {
     else schedule();
   });
   on(window,'orientationchange',invalidate);
-  on(window,'pageshow',invalidate);
+  on(window,'pageshow',()=>{
+    for(const study of studies) {
+      const rect=study.stage.getBoundingClientRect();
+      study.visible=rect.bottom>0&&rect.top<innerHeight;
+    }
+    invalidate();
+  });
   on(document,'visibilitychange',()=>{
     if(document.hidden){cancelAnimationFrame(frame);frame=0;}
     else invalidate();
+    for(const study of studies)syncFlow(study);
   });
   on(reduced,'change',invalidate);
   on(visualViewport||window,'resize',()=>{
@@ -197,7 +246,20 @@ export function initProjectAssemblies() {
   }
   document.fonts.ready.then(()=>{if(!signal.aborted)invalidate();});
   on(document.fonts,'loadingdone',invalidate);
-  dispose=()=>{abort.abort();observer.disconnect();cancelAnimationFrame(frame);};
-  on(window,'pagehide',()=>{cancelAnimationFrame(frame);frame=0;});
+  const visibility=new IntersectionObserver(entries=>{
+    for(const entry of entries) {
+      const study=studies.find(study=>study.stage===entry.target);
+      if(study){study.visible=entry.isIntersecting;syncFlow(study);}
+    }
+  });
+  for(const study of studies)visibility.observe(study.stage);
+  dispose=()=>{
+    abort.abort();observer.disconnect();visibility.disconnect();cancelAnimationFrame(frame);
+    for(const study of studies)for(const layout of study.layouts)for(const animation of layout.animations)animation.cancel();
+  };
+  on(window,'pagehide',()=>{
+    cancelAnimationFrame(frame);frame=0;
+    for(const study of studies){study.visible=false;syncFlow(study);}
+  });
   update();
 }

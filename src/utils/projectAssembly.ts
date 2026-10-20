@@ -1,25 +1,41 @@
 import type { Point, ProjectPreview, PreviewNode } from '../data/projectPreviews';
 export const clamp = (value:number) => Math.max(0,Math.min(1,value));
 const smooth = (t:number) => t*t*(3-2*t);
-const NODE_SEQUENCE_START = .04;
-const NODE_SEQUENCE_END = .72;
-export const nodeStart = (index:number,count:number) => NODE_SEQUENCE_START+index*(NODE_SEQUENCE_END-NODE_SEQUENCE_START)/count;
-// Reserve the last fifth of each slot for a settled pause before the next arrival.
-export const nodeEnd = (index:number,count:number) => nodeStart(index,count)+.8*(NODE_SEQUENCE_END-NODE_SEQUENCE_START)/count;
-// A box owns one exclusive scroll interval; the next waits through its landing pause.
-export const nodeProgress = (p:number,index:number,count:number) => smooth(clamp((p-nodeStart(index,count))/(nodeEnd(index,count)-nodeStart(index,count))));
-// Wait until both endpoint blocks have fully landed before drawing their
-// connection. Finish before the complete-graph hold at 80%.
-export const wireProgress = (p:number,sourceIndex:number,targetIndex:number,count:number) => {
-  const arrivingIndex=Math.max(sourceIndex,targetIndex);
-  const start=nodeEnd(arrivingIndex,count);
-  const end=start+.06;
-  return clamp((p-start)/(end-start));
-};
-export const phase = (p:number) => p < .04 ? 'separated' : p < .72 ? 'assembling' : p < .8 ? 'connecting' : 'complete';
+export type AssemblyInterval = { start:number; end:number };
+export type AssemblyTimeline = { nodes:AssemblyInterval[]; wires:AssemblyInterval[] };
+const SEQUENCE_START = .04;
+const SEQUENCE_END = .78;
+const ARRIVAL_WEIGHT = 1;
+const CONNECTION_WEIGHT = .9;
+const READING_PAUSE_WEIGHT = .18;
+
+// One visual event owns the stage: land a block, trace its available inputs one
+// at a time, then hand attention to the next block. The full graph holds at 80%.
+export function createAssemblyTimeline(preview:ProjectPreview):AssemblyTimeline {
+  const total=preview.nodes.length*(ARRIVAL_WEIGHT+READING_PAUSE_WEIGHT)+preview.edges.length*CONNECTION_WEIGHT;
+  const unit=(SEQUENCE_END-SEQUENCE_START)/total;
+  const nodes:AssemblyInterval[]=[],wires:AssemblyInterval[]=[];
+  let cursor=SEQUENCE_START;
+  preview.nodes.forEach((_,index)=>{
+    nodes.push({start:cursor,end:cursor+ARRIVAL_WEIGHT*unit});
+    cursor+=ARRIVAL_WEIGHT*unit;
+    preview.edges.forEach((edge,edgeIndex)=>{
+      const source=preview.nodes.findIndex(node=>node.id===edge.from);
+      const target=preview.nodes.findIndex(node=>node.id===edge.to);
+      if(Math.max(source,target)!==index)return;
+      wires[edgeIndex]={start:cursor,end:cursor+CONNECTION_WEIGHT*unit};
+      cursor+=CONNECTION_WEIGHT*unit;
+    });
+    cursor+=READING_PAUSE_WEIGHT*unit;
+  });
+  return {nodes,wires};
+}
+export const intervalProgress = (p:number,interval:AssemblyInterval) => clamp((p-interval.start)/(interval.end-interval.start));
+export const nodeProgress = (p:number,interval:AssemblyInterval) => smooth(intervalProgress(p,interval));
+export const phase = (p:number) => p < SEQUENCE_START ? 'separated' : p < SEQUENCE_END ? 'assembling' : p < .8 ? 'connecting' : 'complete';
 export const sceneBounds = (kind:'desktop'|'mobile') => kind==='desktop'?[0,0,960,400]:[0,0,330,365];
-export const nodePosition = (node:PreviewNode,kind:'desktop'|'mobile',p:number,index:number,count:number) => {
-  const n=node[kind],remaining=1-nodeProgress(p,index,count);
+export const nodePosition = (node:PreviewNode,kind:'desktop'|'mobile',p:number,interval:AssemblyInterval) => {
+  const n=node[kind],remaining=1-nodeProgress(p,interval);
   const [, ,width,height]=sceneBounds(kind);
   // Keep arrivals inside the fixed frame now that the camera no longer zooms.
   const inset=8;
@@ -27,35 +43,6 @@ export const nodePosition = (node:PreviewNode,kind:'desktop'|'mobile',p:number,i
   const dy=Math.max(inset,Math.min(height-n.h-inset,n.y+n.dy))-n.y;
   return {x:n.x+dx*remaining,y:n.y+dy*remaining,dx:dx*remaining,dy:dy*remaining};
 };
-// Route between the live source port and an independently positioned head.
-// Move whole constant-coordinate runs together to preserve orthogonal routing.
-export function sourceAnchoredRoute(authored:Point[],from:{dx:number;dy:number},to={dx:0,dy:0}) {
-  if(!from.dx&&!from.dy&&!to.dx&&!to.dy)return authored;
-  const first=authored[0],last=authored.at(-1)!;
-  const target={x:last.x+to.dx,y:last.y+to.dy};
-  const source={x:first.x+from.dx,y:first.y+from.dy};
-  if(authored.every(p=>p.y===first.y)) {
-    const mid=(source.x+target.x)/2;
-    return [source,{x:mid,y:source.y},{x:mid,y:target.y},target];
-  }
-  if(authored.every(p=>p.x===first.x)) {
-    const mid=(source.y+target.y)/2;
-    return [source,{x:source.x,y:mid},{x:target.x,y:mid},target];
-  }
-  const points=authored.map(point=>({...point}));
-  for(const axis of ['x','y'] as const) {
-    const sourceShift=axis==='x'?from.dx:from.dy,targetShift=axis==='x'?to.dx:to.dy;
-    let start=0;
-    for(let end=1;end<=points.length;end++) {
-      if(end<points.length && authored[end][axis]===authored[end-1][axis])continue;
-      const ratio=(start+end-1)/(2*(points.length-1));
-      const shift=start===0?sourceShift:end===points.length?targetShift:sourceShift+(targetShift-sourceShift)*ratio;
-      for(let i=start;i<end;i++)points[i][axis]=authored[i][axis]+shift;
-      start=end;
-    }
-  }
-  return points;
-}
 export const routePath = (points:Point[]) => points.map((point,i)=>`${i?'L':'M'}${point.x} ${point.y}`).join(' ');
 // Every route ends at explicit semantic ports on node boundaries, in both compositions.
 export function validatePreview(preview:ProjectPreview) {
