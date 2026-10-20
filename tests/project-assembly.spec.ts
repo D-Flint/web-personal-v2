@@ -301,12 +301,40 @@ for(const width of [1440,390])test(`completed schematics loop directed data pack
    });
    animations.forEach(animation=>animation.currentTime=duration+250);
    const repeated=paths.map(path=>({opacity:Number(getComputedStyle(path).opacity),offset:parseFloat(getComputedStyle(path).strokeDashoffset)}));
+   // Inspect painted intervals throughout every edge's active slot, including
+   // the late frames where a second dash previously reappeared at the source.
+   const traversals=paths.map((path,index)=>{
+    const animation=animations[index];
+    const keyframes=animation.effect!.getKeyframes();
+    const start=keyframes[1].computedOffset*duration,end=keyframes[4].computedOffset*duration;
+    return Array.from({length:99},(_,step)=>{
+     animation.currentTime=start+(end-start)*(step+1)/100;
+     const style=getComputedStyle(path);
+     const [dash,gap]=style.strokeDasharray.split(/[ ,]+/).map(parseFloat);
+     const offset=parseFloat(style.strokeDashoffset),period=dash+gap;
+     const segments:{start:number;end:number}[]=[];
+     for(let repeat=Math.floor(offset/period)-1;repeat<=Math.ceil((1+offset)/period)+1;repeat++) {
+      const from=repeat*period-offset,to=from+dash;
+      if(to>0&&from<1)segments.push({start:Math.max(0,from),end:Math.min(1,to)});
+     }
+     return segments;
+    });
+   });
    animations.forEach(animation=>{animation.currentTime=0;animation.play();});
-   return {snapshots,repeated};
+   return {snapshots,repeated,traversals};
   });
   expect(sample.snapshots[0][0].opacity).toBe(1);
   expect(sample.snapshots[1][0].offset).toBeLessThan(sample.snapshots[0][0].offset);
   expect(sample.repeated).toEqual(sample.snapshots[0]);
+  for(const traversal of sample.traversals) {
+   for(const segments of traversal)expect(segments).toHaveLength(1);
+   expect(traversal[0][0].start).toBe(0);
+   expect(traversal.at(-1)![0].end).toBe(1);
+   for(let frame=1;frame<traversal.length;frame++) {
+    expect(traversal[frame][0].start).toBeGreaterThanOrEqual(traversal[frame-1][0].start);
+    expect(traversal[frame][0].end).toBeGreaterThanOrEqual(traversal[frame-1][0].end);
+   }
+  }
   for(let edge=0;edge<await packets.count();edge++)expect(sample.snapshots.some(snapshot=>snapshot[edge].opacity===1)).toBe(true);
   for(const snapshot of sample.snapshots)expect(snapshot.filter(packet=>packet.opacity>0).length).toBeLessThanOrEqual(1);
   await page.waitForTimeout(150);

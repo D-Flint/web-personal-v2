@@ -7,6 +7,7 @@ const out='.impeccable/review/eye-flow';
 await mkdir(out,{recursive:true});
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
 const results=[];
+try {
 async function seek(article,p) {
  await article.evaluate((el,p)=>{
   const stage=el.querySelector('[data-assembly-stage]');
@@ -56,22 +57,44 @@ for(const width of [1440,390]) {
  const runs=[];
  for(const article of await page.locator('[data-project-assembly]').all()) {
   await seek(article,0);
+  const targetProgress=.94;
+  const distance=await article.evaluate(el=>el.getBoundingClientRect().height-el.querySelector('[data-assembly-stage]').getBoundingClientRect().height);
+  if(await article.getAttribute('data-assembly-enhanced')!=='true'||!Number.isFinite(distance)||distance<=0)throw Error('Recording requires an enhanced assembly with positive scroll travel');
+  // Touch slop and input timing can reduce travel; keep a measured, bounded margin.
+  const inputDistance=cdp?100:90;
+  const maxSteps=Math.ceil(distance*targetProgress/inputDistance*1.5)+2;
   const states=[];
-  for(let step=0;step<34;step++) {
+  for(let step=0;step<maxSteps;step++) {
    if(cdp) {
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:180,y:620}]});
     for(let y=600;y>=500;y-=20){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:180,y}]});await page.waitForTimeout(20);}
     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
    } else {await page.mouse.move(700,450);await page.mouse.wheel(0,90);}
    await page.waitForTimeout(90);
-   states.push(Number(await article.getAttribute('data-assembly-progress')));
-   if(states.at(-1)>=.94)break;
+   const progress=Number(await article.getAttribute('data-assembly-progress'));
+   if(!Number.isFinite(progress))throw Error('Recording lost assembly progress');
+   states.push(progress);
+   if(progress>=targetProgress)break;
   }
-  runs.push({id:await article.getAttribute('data-project-assembly'),states});
+  const id=await article.getAttribute('data-project-assembly');
+  const reachedTarget=states.at(-1)>=targetProgress;
+  runs.push({id,distance,targetProgress,maxSteps,reachedTarget,states});
+  if(!reachedTarget) {
+   results.push({width,runs});
+   await writeFile(`${out}/results.json`,JSON.stringify(results,null,2)+'\n');
+   await context.close();
+   throw Error(`Assembly ${id} at ${width}px reached ${states.at(-1)}, expected at least ${targetProgress} after ${maxSteps} inputs`);
+  }
+  // Keep the completed view onscreen for one full directed-packet cycle.
+  const cycleDuration=await article.locator(`.assembly-${width===390?'mobile':'desktop'} [data-assembly-packet]`).evaluateAll(paths=>Math.max(0,...paths.flatMap(path=>path.getAnimations().filter(animation=>animation.playState==='running').map(animation=>Number(animation.effect.getTiming().duration)))));
+  if(!Number.isFinite(cycleDuration)||cycleDuration<=0)throw Error(`Assembly ${id} has no running completed-state loop`);
+  await page.waitForTimeout(cycleDuration);
  }
  const video=page.video();await context.close();await video.saveAs(`${out}/scroll-${width}.webm`);
  results.push({width,runs});
 }
-await browser.close();
+} finally {
+ await browser.close();
+}
 await writeFile(`${out}/results.json`,JSON.stringify(results,null,2)+'\n');
 console.log(JSON.stringify(results,null,2));

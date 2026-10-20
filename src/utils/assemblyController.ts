@@ -34,12 +34,12 @@ export function initProjectAssemblies() {
           const start=slot*(FLOW_TRAVEL_MS+FLOW_GAP_MS)/duration;
           const end=start+FLOW_TRAVEL_MS/duration;
           const animation=layout.packets[index].animate([
-            {offset:0,strokeDashoffset:'1',opacity:0},
-            {offset:start,strokeDashoffset:'1',opacity:0},
-            {offset:start+.008,strokeDashoffset:'.94',opacity:1},
-            {offset:end-.008,strokeDashoffset:'0',opacity:1},
-            {offset:end,strokeDashoffset:'-.06',opacity:0},
-            {offset:1,strokeDashoffset:'-.06',opacity:0},
+            {offset:0,strokeDashoffset:'.06',opacity:0},
+            {offset:start,strokeDashoffset:'.06',opacity:0},
+            {offset:start+.008,strokeDashoffset:'0',opacity:1},
+            {offset:end-.008,strokeDashoffset:'-.94',opacity:1},
+            {offset:end,strokeDashoffset:'-1',opacity:0},
+            {offset:1,strokeDashoffset:'-1',opacity:0},
           ],{duration,iterations:Infinity,easing:'linear'});
           animation.currentTime=0;
           layout.animations.push(animation);

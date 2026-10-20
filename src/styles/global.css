@@ -2158,8 +2158,9 @@ textarea[aria-invalid='true']:focus {
   stroke: var(--blue);
   stroke-width: 3;
   stroke-linecap: round;
-  stroke-dasharray: .06 1;
-  stroke-dashoffset: 1;
+  /* The gap exceeds the path so adjacent dashes stay outside the traversal. */
+  stroke-dasharray: .06 1.06;
+  stroke-dashoffset: .06;
   opacity: 0;
 }
 [data-assembly-flow] .assembly-flow-packet { display: block; }
