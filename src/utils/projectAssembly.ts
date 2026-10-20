@@ -8,11 +8,12 @@ export const nodeStart = (index:number,count:number) => NODE_SEQUENCE_START+inde
 export const nodeEnd = (index:number,count:number) => nodeStart(index,count)+.8*(NODE_SEQUENCE_END-NODE_SEQUENCE_START)/count;
 // A box owns one exclusive scroll interval; the next waits through its landing pause.
 export const nodeProgress = (p:number,index:number,count:number) => smooth(clamp((p-nodeStart(index,count))/(nodeEnd(index,count)-nodeStart(index,count))));
-// A connection can launch only from a fully landed source. Allow late-source
-// edges a final connecting interval before the complete-graph hold at 80%.
+// Wait until both endpoint blocks have fully landed before drawing their
+// connection. Finish before the complete-graph hold at 80%.
 export const wireProgress = (p:number,sourceIndex:number,targetIndex:number,count:number) => {
-  const start=nodeEnd(sourceIndex,count);
-  const end=Math.max(start,nodeEnd(targetIndex,count))+.06;
+  const arrivingIndex=Math.max(sourceIndex,targetIndex);
+  const start=nodeEnd(arrivingIndex,count);
+  const end=start+.06;
   return clamp((p-start)/(end-start));
 };
 export const phase = (p:number) => p < .04 ? 'separated' : p < .72 ? 'assembling' : p < .8 ? 'connecting' : 'complete';

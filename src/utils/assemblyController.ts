@@ -30,7 +30,7 @@ export function initProjectAssemblies() {
     study.article.dataset.assemblyProgress=p.toFixed(6);
     study.article.dataset.assemblyPhase=phase(p);
     // Only the current responsive composition is written during scrolling. Both are
-    // restored for static mode. Arrows launch from landed sources toward final ports.
+    // restored for static mode. Arrows wait for both blocks to land before following their route.
     for(const layout of study.layouts) {
       if(study.enabled && !force && (layout.kind==='mobile')!==(innerWidth<=700)) continue;
       const current=study.enabled?p:1;
@@ -43,15 +43,16 @@ export function initProjectAssemblies() {
       });
       for(const wire of layout.wires) {
         const t=study.enabled?wireProgress(p,wire.sourceIndex,wire.targetIndex,study.preview.nodes.length):1;
-        // Advance directly toward the final target, using the live source only.
-        // There is no cached head trajectory and no live destination lookup.
+        // Follow the authored bends, keeping the route attached to its live source.
         const from=positions.get(wire.from)!;
-        const source={x:wire.authored[0].x+from.dx,y:wire.authored[0].y+from.dy};
-        const target=wire.authored.at(-1)!;
-        const tip={x:source.x+(target.x-source.x)*t,y:source.y+(target.y-source.y)*t,
-          angle:t<1?Math.atan2(target.y-source.y,target.x-source.x)*180/Math.PI:routeTip(wire.route,1).angle};
-        const points=sourceAnchoredRoute(wire.authored,from,{dx:tip.x-target.x,dy:tip.y-target.y});
-        wire.path.setAttribute('d',routePath(points));
+        const points=sourceAnchoredRoute(wire.authored,from);
+        const route=from.dx||from.dy?cacheRoute(points):wire.route;
+        const tip=routeTip(route,t);
+        const distance=t*route.length;
+        const trail=t>=1?points:[points[0],...route.segments
+          .filter(segment=>segment.start>0&&segment.start<distance)
+          .map(segment=>segment.from),{x:tip.x,y:tip.y}];
+        wire.path.setAttribute('d',routePath(trail));
         wire.path.dataset.assemblyWireProgress=String(t);
         wire.path.style.visibility=t<=0?'hidden':'visible';
         wire.head.style.visibility=t<=0?'hidden':'visible';

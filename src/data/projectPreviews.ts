@@ -54,6 +54,26 @@ export const projectPreviews: Record<string, ProjectPreview> = {
       { ...edge('api-response','api','assistant',3,points(805,305,805,264),points(176,328,160,328,160,205,247,205,247,189), 'Response'), labelAt: { desktop: { x:817, y:287 }, mobile: { x:185, y:218 } } },
     ],
   },
+  '04': {
+    ...meta('04','AI Models Finder','Multiple benchmark sources provide verified scores across several metrics. A recommendation algorithm matches those metrics to user needs and requirements, producing model rankings for comparison and selection. This feature-based architecture is illustrative.'),
+    nodes:[
+      node('sources','Benchmarks',0,box(25,50,180,94,-120,-100),box(12,12,138,60,-12,-55),['Multiple sources','Model benchmark results']),
+      node('scores','Verified scores',0,box(260,50,180,94,-50,-100),box(180,12,138,60,12,-25),['Verified benchmarks','Model / score / source']),
+      node('metrics','Metric coverage',1,box(495,50,190,94,50,-100),box(12,102,138,60,-12,35),['Multiple measures','Use-case relevance']),
+      node('needs','User needs',1,box(260,255,180,100,-90,100),box(180,102,138,60,12,55),['Use cases / requirements']),
+      node('recommend','Recommendation',2,box(495,255,190,100,90,100),box(12,192,150,62,-12,75),['Matching algorithm','Needs + benchmark scores']),
+      node('rankings','Model rankings',2,box(750,145,180,94,100,-100),box(180,192,138,62,12,85),['Ranked model matches','Benchmark-based scores']),
+      node('compare','Compare models',3,box(750,285,180,94,100,110),box(79,292,172,62,5,110),['Review metrics / fit','Choose a model']),
+    ],
+    edges:[
+      edge('source-scores','sources','scores',0,points(205,97,260,97),points(150,42,180,42)),
+      edge('scores-metrics','scores','metrics',1,points(440,97,495,97),points(249,72,249,87,81,87,81,102)),
+      edge('metrics-recommend','metrics','recommend',2,points(590,144,590,255),points(81,162,81,192)),
+      edge('needs-recommend','needs','recommend',2,points(440,305,495,305),points(180,132,168,132,168,177,132,177,132,192)),
+      edge('recommend-rankings','recommend','rankings',3,points(685,305,715,305,715,192,750,192),points(162,223,180,223)),
+      edge('rankings-compare','rankings','compare',3,points(840,239,840,285),points(249,254,249,275,165,275,165,292)),
+    ],
+  },
   '03': {
     ...meta('03','Task Automation Bot','File rules and a schedule feed a CLI worker. The worker writes SQLite rollback records and an audit output. Storage and audit are illustrative outputs, not a verified separate service boundary.'),
     nodes:[
