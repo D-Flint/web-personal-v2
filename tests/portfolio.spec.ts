@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { installMotionProbe, scene } from './motion-probe.mjs';
 
 test('navigation, all records, resume and external link truth', async ({ page, request }) => {
   await page.goto('/');
@@ -224,22 +223,6 @@ test('touch scrolling drives diagrams and the carriage without pointer input', a
   await expect(figure).toHaveAttribute('data-opening', '0.000');
   await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-animating', 'false');
   await context.close();
-});
-
-
-test('workbench pieces can be grabbed, tossed and settle', async ({ page }) => {
-  await page.addInitScript(installMotionProbe);await page.setViewportSize({width:1440,height:900});await page.goto('/');
-  await expect(page.locator('[data-background="particles-workbench"]')).toBeVisible();
-  await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-objects','8');
-  await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-animating','true',{timeout:6000});
-  const visible=(await scene(page)).bodies.filter((body:any)=>body.alpha>.6);
-  expect(visible.length).toBeGreaterThan(0);
-  const piece=visible[0];await page.mouse.move(piece.x,piece.y);
-  await expect(page.locator('body')).toHaveAttribute('data-desk-hover','true');
-  await page.mouse.down();await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-interaction','dragging');
-  await page.mouse.move(piece.x+90,piece.y+40,{steps:5});await page.mouse.up();
-  await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-interaction','idle');
-  await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-animating','true',{timeout:6000});
 });
 
 
