@@ -2131,6 +2131,15 @@ textarea[aria-invalid='true']:focus {
 .assembly-node-box { fill: var(--paper); stroke: var(--muted); stroke-width: 1; }
 .assembly-inner-rule { fill: none; stroke: var(--line); stroke-width: 1; }
 .assembly-primary { fill: var(--ink); font: 18px Inter, sans-serif; }
+[data-assembly-emphasis='primary'] .assembly-node-box {
+  fill: color-mix(in srgb, var(--blue) 5%, var(--paper));
+  stroke: var(--blue);
+  stroke-width: 1.6;
+}
+[data-assembly-emphasis='primary'] .assembly-primary {
+  fill: var(--blue);
+  font-weight: 600;
+}
 .assembly-detail { fill: var(--muted); font: 12px Inter, sans-serif; }
 .assembly-port { fill: var(--paper); stroke: var(--blue); stroke-width: 1.3; }
 .assembly-connections { stroke: var(--blue); stroke-width: 1.6; stroke-linejoin: round; }

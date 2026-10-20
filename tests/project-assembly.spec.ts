@@ -282,8 +282,8 @@ for(const mode of ['no-js','reduce','failure'])test(`static complete graph and i
  await expect(a).not.toHaveAttribute('data-assembly-enhanced','true');
  const h=await a.evaluate(el=>el.getBoundingClientRect().height);expect(h).toBeLessThan(844);
  await a.locator('[data-assembly-cta]').scrollIntoViewIfNeeded();await expect(a.locator('[data-assembly-cta]')).toBeVisible();
- expect(await a.locator('.assembly-mobile [data-assembly-node]').count()).toBe(5);
- expect(await a.locator('.assembly-mobile [data-assembly-head]').count()).toBe(4);
+ expect(await a.locator('.assembly-mobile [data-assembly-node]').count()).toBe(projectPreviews['01'].nodes.length);
+ expect(await a.locator('.assembly-mobile [data-assembly-head]').count()).toBe(projectPreviews['01'].edges.length);
  for(const transform of await a.locator('.assembly-mobile [data-assembly-node]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('transform'))))expect(transform).not.toContain('NaN');
  for(const opacity of await a.locator('.assembly-mobile [data-assembly-node]').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).opacity)))expect(opacity).toBe('1');
  await a.locator('[data-assembly-cta]').click();await expect(page).toHaveURL(/\/projects#project-01/);await context.close();

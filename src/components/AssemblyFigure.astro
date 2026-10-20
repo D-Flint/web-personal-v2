@@ -31,7 +31,7 @@ const endTransform = (points: {x:number;y:number}[]) => {
         {preview.nodes.map(node => {
           const n=node[layout];
           const compact=layout==='mobile';
-          return <g data-assembly-node={node.id} transform={`translate(${n.x} ${n.y})`}>
+          return <g data-assembly-node={node.id} data-assembly-emphasis={node.emphasis} transform={`translate(${n.x} ${n.y})`}>
             <rect class="assembly-node-box" width={n.w} height={n.h} rx={node.shape==='store'?8:2} />
             {node.shape==='browser' && <path class="assembly-inner-rule" d={`M0 9 H${n.w}`} />}
             <text class="assembly-primary" x={compact?9:14} y={compact?24:28}>{node.label}</text>
