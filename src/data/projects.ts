@@ -16,15 +16,15 @@ export const projects: Project[] = [
     num: '01',
     title: 'Agentic AI Assistant',
     description:
-      'A sandboxed, autonomous local AI assistant operating 24/7 with Docker container isolation, prompt injection defense, and automated task execution.',
+      'Aether is a local AI workbench with persistent Codex conversations, passcode-authorized task execution, bounded Ollama runs, and searchable Second Brain memory.',
     tags: ['Algorithm', 'CLI', 'API', 'Python'],
     domain: 'ai',
     domainLabel: 'AI & Machine Learning',
     features: [
-      'Local sandboxed execution with Docker isolation',
-      '24/7 autonomous task scheduling',
-      'Prompt injection guard layer',
-      'Real-time agent status dashboard',
+      'Persistent Codex chat with read-only memory retrieval',
+      'Passcode-authorized tasks with reviewed execution',
+      'Bounded local Ollama runs and scoped vault actions',
+      'Shared PostgreSQL/pgvector memory and task history',
     ],
   },
   {

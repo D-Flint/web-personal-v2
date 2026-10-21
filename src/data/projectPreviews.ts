@@ -1,4 +1,4 @@
-// Shared schematic data. Illustrative studies are marked individually; record 04 is source-based.
+// Shared schematic data. Illustrative and source-based studies are marked individually.
 export type Point = { x: number; y: number };
 export type Placement = Point & { w: number; h: number; dx: number; dy: number };
 export type PreviewNode = {
@@ -21,23 +21,30 @@ const edge = (id:string,from:string,to:string,group:number,desktop:Point[],mobil
 const meta = (id:string,title:string,summary:string) => ({id,summary,caption:'Architecture schematic',illustrative:true,cta:{href:`/projects#project-${id}`,label:`View ${title}`}});
 export const projectPreviews: Record<string, ProjectPreview> = {
   '01': {
-    ...meta('01','Agentic AI Assistant','A request passes through the prompt injection guard to a task runner. Recurring tasks enter through the scheduler. The runner dispatches work into a Docker sandbox; captured output and exit state feed the status dashboard. Internal stages and fields are illustrative.'),
+    ...meta('01','Agentic AI Assistant','Aether is a local, single-user workbench. The browser uses same-origin FastAPI routes with passcode sessions and CSRF checks. The chat service persists transcripts, sources and receipts in PostgreSQL and starts persistent, read-only Codex threads with retrieval-only memory MCP. Separately, exact-task passcode grants authorize a durable queue; a local manager polls eligible tasks and launches one Codex child at a time. Task Codex uses coordination and memory MCP, may delegate scoped workers, and saves reviewed results and events. Bounded Ollama vault actions form a third execution path. Vault Markdown remains canonical; ingestion indexes allowed notes in the shared Docker-hosted PostgreSQL/pgvector store using hybrid keyword and deterministic hash-vector retrieval. Task and Ollama writes are scoped. Store connections summarize service persistence and retrieval, not a direct browser database connection. The optional, separately gated remote-access overlay is omitted. This schematic summarizes inspected source, not deployment verification.'),
+    caption: 'Source-based architecture · Aether',
+    illustrative: false,
     nodes:[
-      node('request','Request input',0,box(25,50,180,94,-20,0),box(12,12,138,60,0,-10),['Task / context','Execution scope']),
-      node('guard','Prompt guard',0,box(260,50,180,94,-20,0),box(180,12,138,60,-10,0),['Screen task input','Prompt injection defense']),
-      node('scheduler','Scheduler',1,box(260,255,180,100,0,-18),box(180,102,138,60,0,-10),['Recurring tasks','24/7 scheduling']),
-      { ...node('runner','Task runner',1,box(495,50,190,94,-20,0),box(12,102,150,60,0,-10),['Dispatch guarded tasks','Scheduled + on-demand']), emphasis: 'primary' },
-      { ...node('sandbox','Docker sandbox',2,box(750,50,180,94,-20,0),box(12,192,150,62,0,-10),['Isolated local execution','Run task / capture result']), emphasis: 'primary' },
-      node('output','Run output',2,box(750,255,180,100,0,-18),box(180,192,138,62,-8,0),['Output / exit state','Execution result']),
-      node('dashboard','Status dashboard',3,box(495,255,190,100,20,0),box(79,292,172,62,0,-10),['Live task state','Result / activity history']),
+      node('browser','Aether browser',0,box(25,30,180,94,-20,0),box(12,12,138,60,0,-10),['Chat / tasks / memory','Same-origin API'],'browser'),
+      { ...node('api','FastAPI',0,box(260,30,200,94,-20,0),box(180,12,138,60,-10,0),['Passcode / session / CSRF','Single local web worker']), emphasis: 'primary' },
+      node('chat','Chat service',1,box(515,30,190,94,-20,0),box(12,102,138,60,0,-10),['Persistent Codex threads','Read-only memory MCP']),
+      node('manager','Task manager',1,box(260,160,200,94,0,-18),box(180,102,138,60,0,-10),['Authorized task queue','One Codex child at a time']),
+      node('ollama','Local Ollama',2,box(25,280,180,94,0,-18),box(12,192,138,60,10,0),['Separate bounded runs','Local model / vault actions']),
+      { ...node('tasks','Codex tasks',2,box(515,160,190,94,-20,0),box(180,192,138,60,0,-10),['Task + memory MCP','Review / optional workers']), emphasis: 'primary' },
+      node('vault','Canonical vault',3,box(260,280,200,94,-20,0),box(12,292,138,62,0,-10),['Canonical Markdown files','Scoped writes / ingestion'],'store'),
+      node('database','PostgreSQL',3,box(750,160,185,94,0,-18),box(180,292,138,62,-10,0),['Docker + pgvector','Chat / tasks / memories'],'store'),
     ],
     edges:[
-      edge('request-guard','request','guard',0,points(205,97,260,97),points(150,42,180,42)),
-      edge('guard-runner','guard','runner',1,points(440,97,455,97,455,81,495,81),points(249,72,249,87,87,87,87,102)),
-      edge('schedule-runner','scheduler','runner',1,points(440,305,470,305,470,113,495,113),points(180,132,162,132)),
-      edge('runner-sandbox','runner','sandbox',2,points(685,97,750,97),points(87,162,87,192)),
-      edge('sandbox-output','sandbox','output',2,points(840,144,840,255),points(162,223,180,223)),
-      edge('output-status','output','dashboard',3,points(750,305,685,305),points(249,254,249,275,165,275,165,292)),
+      edge('browser-api','browser','api',0,points(205,77,260,77),points(150,42,180,42)),
+      edge('api-chat','api','chat',1,points(460,77,515,77),points(249,72,249,87,81,87,81,102)),
+      edge('api-manager','api','manager',1,points(360,124,360,160),points(249,72,249,102)),
+      edge('api-ollama','api','ollama',2,points(360,30,360,12,12,12,12,327,25,327),points(249,12,249,3,3,3,3,222,12,222)),
+      edge('manager-tasks','manager','tasks',2,points(460,207,515,207),points(249,162,249,192)),
+      edge('ollama-vault','ollama','vault',3,points(205,327,260,327),points(81,252,81,262,59,262,59,292)),
+      edge('tasks-vault','tasks','vault',3,points(610,254,610,270,360,270,360,280),points(224,252,224,272,103,272,103,292)),
+      edge('chat-database','chat','database',3,points(705,77,842.5,77,842.5,160),points(81,162,81,177,168,177,168,311,180,311)),
+      edge('tasks-database','tasks','database',3,points(705,207,750,207),points(274,252,274,272,249,272,249,292)),
+      edge('vault-database','vault','database',3,points(460,327,842.5,327,842.5,254),points(150,323,162,323,162,335,180,335)),
     ],
   },
   '02': {

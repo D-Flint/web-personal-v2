@@ -75,7 +75,7 @@ test('catalog flow suspends offscreen, when filtered, in list view, hidden and r
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect.poll(stopped).toBe(true);
   await expect(figure).not.toHaveAttribute('data-assembly-flow');
-  await expect(figure.locator('.assembly-mobile [data-assembly-node]')).toHaveCount(7);
+  await expect(figure.locator('.assembly-mobile [data-assembly-node]')).toHaveCount(projectPreviews['01'].nodes.length);
 });
 
 test('catalog has complete diagrams without JavaScript', async ({ browser }) => {

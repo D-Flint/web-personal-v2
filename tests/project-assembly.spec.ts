@@ -425,7 +425,7 @@ for(const width of [1440,390])test(`completed schematics loop directed data pack
 
 for(const mode of ['no-js','reduce','failure'])test(`static complete graph and immediate CTA with ${mode}`,async({browser})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},javaScriptEnabled:mode!=='no-js',reducedMotion:mode==='reduce'?'reduce':'no-preference'});const page=await context.newPage();
- if(mode==='failure')await page.route('**/',async route=>{const response=await route.fetch();const html=await response.text();await route.fulfill({response,body:html.replace('"from":"request"','"from":"invalid-node"')});});
+ if(mode==='failure')await page.route('**/',async route=>{const response=await route.fetch();const html=await response.text();await route.fulfill({response,body:html.replace(`"from":"${projectPreviews['01'].edges[0].from}"`,'"from":"invalid-node"')});});
  await page.goto('/');const a=articles(page).first();
  if(mode==='failure')await expect(a).toHaveAttribute('data-assembly-fallback','initialization');
  else if(mode==='reduce')await expect(a).toHaveAttribute('data-assembly-fallback','reduced-motion');
@@ -441,13 +441,14 @@ for(const mode of ['no-js','reduce','failure'])test(`static complete graph and i
 
 test('runtime reduced motion, narrow/short/landscape and enlarged text fit fallbacks retain all content',async({page})=>{
  await ready(page);const a=articles(page).first();await seek(a,.5);
+ const description=await a.locator('.assembly-introduction p').innerText();expect(description).not.toBe('');
  await page.emulateMedia({reducedMotion:'reduce'});await expect(a).toHaveAttribute('data-assembly-fallback','reduced-motion');await expect(a.locator('[data-assembly-cta]')).not.toHaveAttribute('tabindex','-1');
  await page.emulateMedia({reducedMotion:'no-preference'});await expect(a).toHaveAttribute('data-assembly-enhanced','true');
  for(const viewport of [{width:320,height:844},{width:1440,height:450},{width:844,height:390},{width:720,height:450}]) {
   await page.setViewportSize(viewport);await page.evaluate(()=>window.dispatchEvent(new Event('orientationchange')));await page.waitForTimeout(80);
   if(!await a.getAttribute('data-assembly-enhanced'))await expect(a).toHaveAttribute('data-assembly-fallback','fit');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await expect(a.locator('.assembly-introduction p')).toHaveText(/24\/7/);
+  await expect(a.locator('.assembly-introduction p')).toHaveText(description);
  }
  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.documentElement.style.fontSize='200%');
  await expect(a).toHaveAttribute('data-assembly-fallback','fit');await expect(a.locator('[data-assembly-cta]')).not.toHaveAttribute('aria-hidden','true');
