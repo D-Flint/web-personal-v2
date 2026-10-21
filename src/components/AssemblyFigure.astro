@@ -10,7 +10,7 @@ const endTransform = (points: {x:number;y:number}[]) => {
 ---
 <figure class="assembly-figure">
   <figcaption class="assembly-caption">
-    <span>{preview.caption}</span><span>{preview.illustrative && 'Illustrative architecture — details pending'}</span>
+    <span>{preview.caption}</span>{preview.illustrative && <span>Illustrative architecture — details pending</span>}
   </figcaption>
   <div class="assembly-diagram">
     {(['desktop','mobile'] as const).map(layout => (

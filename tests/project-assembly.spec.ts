@@ -353,8 +353,13 @@ for(const width of [1440,390])test(`completed schematics loop directed data pack
   const sample=await packets.evaluateAll(paths=>{
    const animations=paths.map(path=>path.getAnimations()[0]);
    const duration=Number(animations[0].effect!.getTiming().duration);
-   const snapshots=[.25,.65,1.3,2.38,3.46,4.54,5.62,6.7].map(seconds=>{
-    animations.forEach(animation=>{animation.pause();animation.currentTime=seconds*1000;});
+   // Sample every edge's visible interval, including graphs with more connections.
+   const sampleTimes=[250,650,...animations.map(animation=>{
+    const frames=animation.effect!.getKeyframes();
+    return (frames[2].computedOffset+frames[3].computedOffset)/2*duration;
+   })];
+   const snapshots=sampleTimes.map(time=>{
+    animations.forEach(animation=>{animation.pause();animation.currentTime=time;});
     return paths.map(path=>({opacity:Number(getComputedStyle(path).opacity),offset:parseFloat(getComputedStyle(path).strokeDashoffset)}));
    });
    animations.forEach(animation=>animation.currentTime=duration+250);

@@ -1,4 +1,4 @@
-// Illustrative preview content only. Replace with owner-reviewed architecture later.
+// Shared schematic data. Illustrative studies are marked individually; record 04 is source-based.
 export type Point = { x: number; y: number };
 export type Placement = Point & { w: number; h: number; dx: number; dy: number };
 export type PreviewNode = {
@@ -60,23 +60,29 @@ export const projectPreviews: Record<string, ProjectPreview> = {
     ],
   },
   '04': {
-    ...meta('04','AI Models Finder','Multiple benchmark sources provide verified scores across several metrics. A recommendation algorithm matches those metrics to user needs and requirements, producing model rankings for comparison and selection. This feature-based architecture is illustrative.'),
+    ...meta('04','AI Models Finder','Synapse ingests reviewed provider facts and prices, local LiveBench and BFCL snapshots, and OpenRouter, LMArena and SWE-bench feeds. A Node pipeline normalizes evidence, scores and validates records, then writes the reviewed JSON catalog; optional PostgreSQL persistence archives ingestion data. Catalog loading validates and enriches records, selects eligible LiveBench models and publishes verified entries only. Astro builds pages with React islands and prepared comparison JSON. Cloudflare serves static assets and a Worker for on-demand comparison pairs and crawler routes. In the browser, use cases, priorities, requirements and budget drive deterministic Finder recommendations; workload cost estimates also run locally over prepared catalog data. Browsing does not query PostgreSQL or call a model inference API. This schematic summarizes the inspected source, not deployment verification.'),
+    caption: 'Source-based architecture · Synapse',
+    illustrative: false,
     nodes:[
-      node('sources','Benchmarks',0,box(25,50,180,94,-20,0),box(12,12,138,60,0,-10),['Multiple sources','Model benchmark results']),
-      node('scores','Verified scores',0,box(260,50,180,94,-20,0),box(180,12,138,60,-10,0),['Verified benchmarks','Model / score / source']),
-      node('metrics','Metric coverage',1,box(495,50,190,94,-20,0),box(12,102,138,60,0,-10),['Multiple measures','Use-case relevance']),
-      node('needs','User needs',1,box(260,255,180,100,0,-18),box(180,102,138,60,0,-10),['Use cases / requirements']),
-      node('recommend','Recommendation',2,box(495,255,190,100,0,-18),box(12,192,150,62,0,-10),['Matching algorithm','Needs + benchmark scores']),
-      node('rankings','Model rankings',2,box(750,145,180,94,-20,0),box(180,192,138,62,-8,0),['Ranked model matches','Benchmark-based scores']),
-      node('compare','Compare models',3,box(750,285,180,94,0,-18),box(79,292,172,62,0,-10),['Review metrics / fit','Choose a model']),
+      node('sources','Source evidence',0,box(25,30,180,94,-20,0),box(12,12,138,54,0,-8),['Provider facts / prices','LiveBench / BFCL + feeds']),
+      { ...node('pipeline','Data pipeline',0,box(260,30,200,94,-20,0),box(180,12,138,54,-8,0),['Normalize / score / validate','Write reviewed JSON']), emphasis: 'primary' },
+      node('archive','Optional archive',1,box(25,160,180,94,0,-18),box(12,84,138,54,0,-8),['PostgreSQL / Drizzle','Ingestion history only'],'store'),
+      { ...node('catalog','Public catalog',1,box(515,30,190,94,-20,0),box(180,84,138,54,0,-8),['Validated / verified only','LiveBench-selected models']), emphasis: 'primary' },
+      node('build','Astro build',2,box(750,30,185,94,-20,0),box(12,156,138,54,0,-8),['HTML + React islands','Prepared comparison JSON']),
+      node('delivery','Cloudflare',2,box(750,160,185,94,0,-18),box(180,156,138,54,-8,0),['Static assets + Worker','On-demand pair pages']),
+      node('browser','Browser',2,box(515,160,190,94,20,0),box(180,228,138,54,0,-8),['Explore / rank / compare','Hydrated React islands'],'browser'),
+      node('needs','User needs',3,box(260,280,200,94,-20,0),box(12,228,138,54,0,-8),['Use cases / priorities','Requirements / budget']),
+      { ...node('decisions','Local decisions',3,box(515,280,190,94,0,-18),box(79,300,172,54,0,-8),['Finder + cost estimates','Catalog-based calculations']), emphasis: 'primary' },
     ],
     edges:[
-      edge('source-scores','sources','scores',0,points(205,97,260,97),points(150,42,180,42)),
-      edge('scores-metrics','scores','metrics',1,points(440,97,495,97),points(249,72,249,87,81,87,81,102)),
-      edge('metrics-recommend','metrics','recommend',2,points(590,144,590,255),points(81,162,81,177,62,177,62,192)),
-      edge('needs-recommend','needs','recommend',2,points(440,305,495,305),points(180,132,168,132,168,177,112,177,112,192)),
-      edge('recommend-rankings','recommend','rankings',3,points(685,305,715,305,715,192,750,192),points(162,223,180,223)),
-      edge('rankings-compare','rankings','compare',3,points(840,239,840,285),points(249,254,249,275,165,275,165,292)),
+      edge('source-pipeline','sources','pipeline',0,points(205,77,260,77),points(150,39,180,39)),
+      edge('pipeline-archive','pipeline','archive',1,points(360,124,360,142,115,142,115,160),points(224,66,224,75,81,75,81,84)),
+      edge('pipeline-catalog','pipeline','catalog',1,points(460,77,515,77),points(274,66,274,75,249,75,249,84)),
+      edge('catalog-build','catalog','build',2,points(705,77,750,77),points(249,138,249,147,81,147,81,156)),
+      edge('build-delivery','build','delivery',2,points(842.5,124,842.5,160),points(150,183,180,183)),
+      edge('delivery-browser','delivery','browser',2,points(750,207,705,207),points(249,210,249,228)),
+      edge('browser-decisions','browser','decisions',3,points(610,254,610,280),points(249,282,249,291,205,291,205,300)),
+      edge('needs-decisions','needs','decisions',3,points(460,327,515,327),points(81,282,81,291,125,291,125,300)),
     ],
   },
   '03': {
