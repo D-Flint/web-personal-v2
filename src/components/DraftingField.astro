@@ -51,7 +51,7 @@
     });
 
     // 2. Protect readable content by fading decoration over its measured rectangles.
-    // These rectangles affect particle opacity without changing their positions.
+    // Mask schematic captions and labels, leaving open drawing space transparent.
     function canAnimate() {
       return !document.hidden && !reduced.matches;
     }
@@ -69,7 +69,7 @@
       };
       document
         .querySelectorAll<HTMLElement>(
-          '.header, .hero-pixel-field, .motion-heading, .figure, .assembly-figure, main button, main a, main input, main textarea, main summary, main .tags, .form-actions, .assistant-launcher, dialog[open]',
+          '.header, .hero-pixel-field, .motion-heading, .figure, .assembly-caption, .assembly-relationship, main button, main a, main input, main textarea, main summary, main .tags, .form-actions, .assistant-launcher, dialog[open]',
         )
         .forEach((el) => add(el.getBoundingClientRect()));
       document
