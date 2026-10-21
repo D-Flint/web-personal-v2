@@ -1,0 +1,88 @@
+---
+import AssemblyFigure from './AssemblyFigure.astro';
+import type { ProjectPreview } from '../data/projectPreviews';
+import { createAssemblyTimeline } from '../utils/projectAssembly';
+
+const { preview, title } = Astro.props as { preview: ProjectPreview; title: string };
+const order = createAssemblyTimeline(preview).wires
+  .map((interval, index) => ({ start: interval.start, index }))
+  .sort((a, b) => a.start - b.start)
+  .map(item => item.index);
+---
+
+<div class="catalog-schematic" data-catalog-schematic={preview.id} data-flow-order={JSON.stringify(order)}>
+  <AssemblyFigure preview={preview} title={title} />
+</div>
+
+<script>
+  import { createSchematicFlow } from '../utils/schematicFlow';
+
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const studies = Array.from(document.querySelectorAll<HTMLElement>('[data-catalog-schematic]')).map(element => ({
+    element,
+    visible: false,
+    flow: createSchematicFlow(
+      Array.from(element.querySelectorAll<SVGSVGElement>('[data-assembly-layout]')),
+      JSON.parse(element.dataset.flowOrder!),
+    ),
+  }));
+
+  function sync() {
+    for (const study of studies) {
+      study.element.toggleAttribute('data-assembly-flow', !reduced.matches);
+      study.flow.sync(!reduced.matches, study.visible);
+    }
+  }
+  const visibility = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      const study = studies.find(study => study.element === entry.target);
+      if (study) study.visible = entry.isIntersecting;
+    }
+    sync();
+  });
+  for (const study of studies) visibility.observe(study.element);
+  reduced.addEventListener('change', sync);
+  window.addEventListener('resize', sync, { passive: true });
+  document.addEventListener('visibilitychange', sync);
+  window.addEventListener('pagehide', () => {
+    for (const study of studies) {
+      study.visible = false;
+      study.flow.sync(!reduced.matches, false);
+    }
+  });
+  window.addEventListener('pageshow', () => {
+    for (const study of studies) {
+      const rect = study.element.getBoundingClientRect();
+      study.visible = rect.height > 0 && rect.bottom > 0 && rect.top < innerHeight;
+    }
+    sync();
+  });
+  sync();
+</script>
+
+<style>
+  .catalog-schematic {
+    container-type: inline-size;
+  }
+  .catalog-schematic :global(.assembly-connections) {
+    stroke: var(--muted);
+  }
+  .catalog-schematic :global(.assembly-caption) {
+    border: 0;
+    padding-top: 0;
+  }
+  /* Choose the full portrait graph by panel width, including desktop split views. */
+  @container (max-width: 700px) {
+    .catalog-schematic :global(.assembly-diagram) {
+      aspect-ratio: 330 / 365;
+      width: 100%;
+      max-width: 440px;
+      margin-inline: auto;
+    }
+    .catalog-schematic :global(.assembly-desktop) { display: none; }
+    .catalog-schematic :global(.assembly-mobile) { display: block; }
+    .catalog-schematic :global(.assembly-primary) { font-size: 14.5px; }
+    .catalog-schematic :global(.assembly-detail),
+    .catalog-schematic :global(.assembly-relationship) { font-size: 9.5px; }
+  }
+</style>

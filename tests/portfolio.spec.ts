@@ -7,7 +7,7 @@ test('navigation, all records, resume and external link truth', async ({ page, r
   await expect(page).toHaveURL(/\/projects/);
   await expect(page.locator('.catalog-item')).toHaveCount(4);
   await expect(page.locator('.catalog-item h2')).toHaveText(['Agentic AI Assistant', 'Portfolio Website', 'Task Automation Bot', 'AI Models Finder']);
-  await expect(page.locator('.catalog-item.has-study [data-diagram]')).toHaveCount(4);
+  await expect(page.locator('.catalog-item.has-study [data-catalog-schematic]')).toHaveCount(4);
   await page.getByRole('button', { name: 'View Portfolio Website details', exact: true }).click();
   await expect(page.locator('#detail-live')).toHaveAttribute('href', 'https://hoeurbvuthi.site/');
   await page.keyboard.press('Escape');
@@ -176,31 +176,21 @@ test('workbench lifecycle and no unhandled application errors', async ({ page })
 });
 
 
-test('catalog opens schematics with attached wires and keeps the drafting field across routes', async ({ page }) => {
+test('catalog keeps complete schematics fixed while scrolling and the drafting field active', async ({ page }) => {
   await page.goto('/projects');
-  const figure = page.locator('[data-diagram]').nth(0);
-  await figure.evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - innerHeight + 30));
-  const assembled = await figure.locator('[data-node="guard"]').getAttribute('transform');
-  await figure.evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - (innerHeight - el.clientHeight) / 2));
-  await expect.poll(() => figure.getAttribute('data-opening')).toBe('1.000');
-  expect(await figure.locator('[data-node="guard"]').getAttribute('transform')).not.toBe(assembled);
-  const geometry = await figure.evaluate(el => {
-    const nodes = JSON.parse((el as HTMLElement).dataset.nodes!);
-    const edges = JSON.parse((el as HTMLElement).dataset.edges!);
-    const opening = Number((el as HTMLElement).dataset.opening);
-    return edges.map((edge: any, i: number) => {
-      const from = nodes.find((node: any) => node.id === edge.from);
-      const path = el.querySelectorAll<SVGPathElement>('[data-wire]')[i];
-      const start = path.getPointAtLength(0);
-      return Math.hypot(start.x - (from.x + from.dx * opening + edge.fx), start.y - (from.y + from.dy * opening + edge.fy));
-    });
-  });
-  expect(Math.max(...geometry)).toBeLessThan(.1);
+  const figure = page.locator('[data-catalog-schematic]').first();
+  const geometry = () => figure.locator('[data-assembly-node], [data-assembly-wire], [data-assembly-head]').evaluateAll(elements =>
+    elements.map(element => [element.getAttribute('transform'), element.getAttribute('d'), getComputedStyle(element).opacity]));
+  const complete = await geometry();
+  await figure.scrollIntoViewIfNeeded();
+  await page.mouse.wheel(0, 240);
+  await expect(figure).toHaveAttribute('data-assembly-flow', '');
+  expect(await geometry()).toEqual(complete);
+  await expect(page.locator('[data-diagram], [data-project-assembly]')).toHaveCount(0);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(figure).toHaveAttribute('data-opening', '0.000');
-  await expect(figure.locator('.diagram-view')).toHaveText('Component study');
+  await expect(figure).not.toHaveAttribute('data-assembly-flow');
+  expect(await geometry()).toEqual(complete);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.goto('/projects');
   const before = await page.locator<HTMLCanvasElement>('#drafting-canvas').evaluate(el => el.toDataURL());
   await page.locator('.catalog-item').nth(3).scrollIntoViewIfNeeded();
   await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-running', 'true');
@@ -208,19 +198,21 @@ test('catalog opens schematics with attached wires and keeps the drafting field 
   expect(await page.locator('#drafting-canvas').evaluate(el => el.getBoundingClientRect().top)).toBe(0);
 });
 
-
-test('touch scrolling drives diagrams and the carriage without pointer input', async ({ browser }) => {
+test('touch scrolling preserves complete catalog diagrams without assembly', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   await page.goto('http://localhost:4322/projects');
-  const figure = page.locator('[data-diagram]').nth(0);
-  await figure.evaluate(el => scrollTo(0, el.getBoundingClientRect().top + scrollY - (innerHeight - el.clientHeight) / 2));
-  await expect.poll(() => figure.getAttribute('data-opening')).toBe('1.000');
-  expect(await figure.locator('[data-mobile-part]').first().evaluate(el => getComputedStyle(el).transform)).not.toBe('none');
+  const figure = page.locator('[data-catalog-schematic]').first();
+  await figure.scrollIntoViewIfNeeded();
+  const nodes = figure.locator('.assembly-mobile [data-assembly-node]');
+  const transforms = await nodes.evaluateAll(elements => elements.map(element => element.getAttribute('transform')));
+  const client = await context.newCDPSession(page);
+  await client.send('Input.synthesizeScrollGesture', { x: 200, y: 600, yDistance: -180, speed: 600, gestureSourceType: 'touch' });
+  expect(await nodes.evaluateAll(elements => elements.map(element => element.getAttribute('transform')))).toEqual(transforms);
   await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-running', 'true');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(figure).toHaveAttribute('data-opening', '0.000');
+  await expect(figure).not.toHaveAttribute('data-assembly-flow');
   await expect(page.locator('#drafting-canvas')).toHaveAttribute('data-animating', 'false');
   await context.close();
 });

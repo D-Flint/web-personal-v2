@@ -5,7 +5,6 @@ import Footer from '../components/Footer.astro';
 import PortfolioAssistant from '../components/PortfolioAssistant.astro';
 import ProjectModal from '../components/ProjectModal.astro';
 import DraftingField from '../components/DraftingField.astro';
-import ScrollDrafting from '../components/ScrollDrafting.astro';
 const {
   title = 'Hoeurb Vuthi — Engineering Field Journal',
   description = 'Engineering projects, systems experiments and web development by Hoeurb Vuthi, a developer and MIS student in Phnom Penh.',
@@ -89,7 +88,7 @@ const {
     <Footer />
     <ProjectModal />
     <PortfolioAssistant />
-    <ScrollDrafting /><script>
+    <script>
       // Tab stays inside the active dialog. Ignore hidden/disabled controls so keyboard
       // visitors never focus a retry button or form control that is currently unavailable.
       // Native modal semantics plus explicit Tab cycling avoid focus moving to browser chrome.

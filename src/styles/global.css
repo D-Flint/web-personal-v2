@@ -2070,7 +2070,7 @@ textarea[aria-invalid='true']:focus {
   }
 }
 
-/* Home-only assembly studies. Catalog studies keep their own drafting controller. */
+/* Shared schematic drawing styles; only home articles use scroll assembly. */
 .project-assembly {
   --assembly-screens: 8;
   --assembly-inset: max(12px, env(safe-area-inset-top));

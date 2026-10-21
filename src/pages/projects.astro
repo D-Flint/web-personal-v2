@@ -1,15 +1,10 @@
 ---
 export const prerender = true;
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ProjectFigure from '../components/ProjectFigure.astro';
+import CatalogSchematic from '../components/CatalogSchematic.astro';
+import { projectPreviews } from '../data/projectPreviews';
 import Arrow from '../components/Arrow.astro';
 import { projects } from '../data/projects';
-const studies: Record<string, string> = {
-  '01': 'agent',
-  '02': 'web',
-  '03': 'tools',
-  '04': 'finder',
-};
 const categories = [
   ['all', 'All projects'],
   ['web', 'Web applications'],
@@ -90,14 +85,14 @@ const tags = [...new Set(projects.flatMap((project) => project.tags))].sort();
         projects.map((project) => (
           <article
             id={`project-${project.num}`}
-            class:list={['catalog-item', { 'has-study': Boolean(studies[project.num]) }]}
+            class:list={['catalog-item', { 'has-study': Boolean(projectPreviews[project.num]) }]}
             data-search={`${project.title} ${project.description} ${project.tags.join(' ')}`.toLowerCase()}
             data-domain={project.domain}
             data-tags={JSON.stringify(project.tags)}
           >
-            {studies[project.num] && (
+            {projectPreviews[project.num] && (
               <div class="project-study">
-                <ProjectFigure variant={studies[project.num]} />
+                <CatalogSchematic preview={projectPreviews[project.num]} title={project.title} />
               </div>
             )}
             <div class="record-content">
@@ -372,18 +367,6 @@ const tags = [...new Set(projects.flatMap((project) => project.tags))].sort();
     padding: 22px 20px;
     border-radius: 3px;
   }
-  .project-study :global(.diagram-board) {
-    padding: 0;
-    background: transparent;
-    border: 0;
-  }
-  .project-study :global(figcaption) {
-    font-size: 0.65rem;
-    gap: 10px;
-  }
-  .project-study :global(.diagram-view) {
-    display: none;
-  }
   .record-content {
     min-width: 0;
   }
@@ -563,12 +546,6 @@ const tags = [...new Set(projects.flatMap((project) => project.tags))].sort();
     }
     .record-description {
       font-size: 0.85rem;
-    }
-    .project-study :global(.mobile-schematic) {
-      margin-top: 18px;
-    }
-    .project-study :global(.schematic-node) {
-      background: var(--paper);
     }
   }
 </style>

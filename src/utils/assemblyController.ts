@@ -1,14 +1,12 @@
+import { createSchematicFlow } from './schematicFlow';
 import type { ProjectPreview } from '../data/projectPreviews';
 import { cacheRoute, clamp, createAssemblyTimeline, intervalProgress, nodePosition, nodeProgress, phase, routePath, routeTip, sceneBounds, validatePreview } from './projectAssembly';
 
 type Wire = { path:SVGPathElement; head:SVGPathElement; targetIndex:number; authored:ProjectPreview['edges'][number]['desktop']; route:ReturnType<typeof cacheRoute>; label:SVGTextElement|null };
-type Layout = { svg:SVGSVGElement; nodes:SVGGElement[]; wires:Wire[]; packets:SVGPathElement[]; animations:Animation[]; kind:'desktop'|'mobile' };
+type Layout = { svg:SVGSVGElement; nodes:SVGGElement[]; wires:Wire[]; packets:SVGPathElement[]; kind:'desktop'|'mobile' };
 type Study = { article:HTMLElement; stage:HTMLElement; cta:HTMLAnchorElement; completion:HTMLElement;
-  visible:boolean;
+  visible:boolean; flow:ReturnType<typeof createSchematicFlow>;
   preview:ProjectPreview; timeline:ReturnType<typeof createAssemblyTimeline>; layouts:Layout[]; enabled:boolean; failed:boolean; top:number; distance:number; inset:number; last:number };
-const FLOW_TRAVEL_MS=900;
-const FLOW_GAP_MS=180;
-const FLOW_REST_MS=900;
 let dispose: (()=>void) | undefined;
 export function initProjectAssemblies() {
   dispose?.();
@@ -22,36 +20,9 @@ export function initProjectAssemblies() {
   function syncFlow(study:Study) {
     const complete=study.enabled&&study.last>=.8&&!reduced.matches;
     study.article.toggleAttribute('data-assembly-flow',complete);
-    for(const layout of study.layouts) {
-      const running=complete&&study.visible&&!document.hidden&&
-        (layout.kind==='mobile')===(innerWidth<=700);
-      // Browser-owned dash animations leave the scroll geometry untouched and
-      // pause without per-frame JS work when the stage is hidden or offscreen.
-      if(running&&!layout.animations.length) {
-        const order=study.timeline.wires.map((interval,index)=>({start:interval.start,index})).sort((a,b)=>a.start-b.start);
-        const duration=order.length*(FLOW_TRAVEL_MS+FLOW_GAP_MS)+FLOW_REST_MS;
-        for(const [slot,{index}] of order.entries()) {
-          const start=slot*(FLOW_TRAVEL_MS+FLOW_GAP_MS)/duration;
-          const end=start+FLOW_TRAVEL_MS/duration;
-          const animation=layout.packets[index].animate([
-            {offset:0,strokeDashoffset:'.06',opacity:0},
-            {offset:start,strokeDashoffset:'.06',opacity:0},
-            {offset:start+.008,strokeDashoffset:'0',opacity:1},
-            {offset:end-.008,strokeDashoffset:'-.94',opacity:1},
-            {offset:end,strokeDashoffset:'-1',opacity:0},
-            {offset:1,strokeDashoffset:'-1',opacity:0},
-          ],{duration,iterations:Infinity,easing:'linear'});
-          animation.currentTime=0;
-          layout.animations.push(animation);
-        }
-      }
-      for(const animation of layout.animations) {
-        if(running&&animation.playState!=='running')animation.play();
-        else if(!running&&animation.playState!=='paused')animation.pause();
-        if(!complete)animation.currentTime=0;
-      }
-    }
+    study.flow.sync(complete,study.visible);
   }
+
   function restore(study:Study, reason:string) {
     study.enabled=false;
     study.article.removeAttribute('data-assembly-enhanced');
@@ -127,9 +98,12 @@ export function initProjectAssemblies() {
           const targetIndex=preview.nodes.findIndex(n=>n.id===edge.to);
           return {path,head:heads[i],targetIndex,authored:edge[svg.dataset.assemblyLayout as Layout['kind']],route,label:path.parentElement!.querySelector<SVGTextElement>('[data-assembly-relationship]')};
         });
-        return {svg,nodes,wires,packets,animations:[],kind:svg.dataset.assemblyLayout as Layout['kind']};
+        return {svg,nodes,wires,packets,kind:svg.dataset.assemblyLayout as Layout['kind']};
       });
-      const study:Study={article,preview,timeline:createAssemblyTimeline(preview),layouts,stage:article.querySelector('[data-assembly-stage]')!,cta:article.querySelector('[data-assembly-cta]')!,completion:article.querySelector('[data-assembly-completion]')!,visible:false,enabled:false,failed:false,top:0,distance:0,inset:0,last:-1};
+      const timeline=createAssemblyTimeline(preview);
+      const order=timeline.wires.map((interval,index)=>({start:interval.start,index})).sort((a,b)=>a.start-b.start).map(item=>item.index);
+      const flow=createSchematicFlow(layouts.map(layout=>layout.svg),order);
+      const study:Study={article,preview,timeline,flow,layouts,stage:article.querySelector('[data-assembly-stage]')!,cta:article.querySelector('[data-assembly-cta]')!,completion:article.querySelector('[data-assembly-completion]')!,visible:false,enabled:false,failed:false,top:0,distance:0,inset:0,last:-1};
       studies.push(study);
       const finish=()=>{
         if(!study.enabled)return;
@@ -255,7 +229,7 @@ export function initProjectAssemblies() {
   for(const study of studies)visibility.observe(study.stage);
   dispose=()=>{
     abort.abort();observer.disconnect();visibility.disconnect();cancelAnimationFrame(frame);
-    for(const study of studies)for(const layout of study.layouts)for(const animation of layout.animations)animation.cancel();
+    for(const study of studies)study.flow.dispose();
   };
   on(window,'pagehide',()=>{
     cancelAnimationFrame(frame);frame=0;
