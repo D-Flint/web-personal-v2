@@ -8,13 +8,13 @@ async function ready(page:Page) {
   await page.evaluate(()=>document.fonts.ready);
   await expect(articles(page).first()).toHaveAttribute('data-assembly-progress');
 }
-async function seek(article:Locator,p:number) {
+async function seek(article:Locator,p:number,expected=p>=.8?1:p) {
   await article.evaluate((el,p)=>{
     const stage=el.querySelector('[data-assembly-stage]')!;
     const inset=parseFloat(getComputedStyle(stage).top)||0;
     scrollTo({top:el.getBoundingClientRect().top+scrollY-inset+(el.getBoundingClientRect().height-stage.getBoundingClientRect().height)*p,behavior:'instant'});
   },p);
-  await expect.poll(async()=>Math.abs(Number(await article.getAttribute('data-assembly-progress'))-p)).toBeLessThan(.003);
+  await expect.poll(async()=>Math.abs(Number(await article.getAttribute('data-assembly-progress'))-expected)).toBeLessThan(.003);
 }
 async function drawing(article:Locator) {
   const state=await article.evaluate(el=>{
@@ -27,7 +27,7 @@ async function drawing(article:Locator) {
       const n=preview.nodes[i][kind],width=kind==='desktop'?960:330,height=kind==='desktop'?400:365;
       const config={...n,dx:Math.max(8,Math.min(width-n.w-8,n.x+n.dx))-n.x,dy:Math.max(8,Math.min(height-n.h-8,n.y+n.dy))-n.y};
       const bounds=node.querySelector('rect')!.getBoundingClientRect();
-      return {x:m.e,y:m.f,width:bounds.width,height:bounds.height,config,opacity:Number(getComputedStyle(node).opacity),group:preview.nodes[i].group};
+      return {x:m.e,y:m.f,width:Number(bounds.width.toFixed(3)),height:Number(bounds.height.toFixed(3)),config,opacity:Number(getComputedStyle(node).opacity),group:preview.nodes[i].group};
     });
     const wires=Array.from(svg.querySelectorAll<SVGPathElement>('[data-assembly-wire]')).map((path,i)=>{
       const length=path.getTotalLength(),t=Number(path.dataset.assemblyWireProgress);
@@ -43,7 +43,7 @@ async function drawing(article:Locator) {
       const source=new DOMPoint(route[0].x-fromNode[kind].x,route[0].y-fromNode[kind].y).matrixTransform(from.getScreenCTM()!);
       const start=path.getPointAtLength(0).matrixTransform(ctm);
       return {authored:route,trailLength:length,headX:hm.e,headY:hm.f,destinationGap:Math.hypot(hm.e-route.at(-1).x,hm.f-route.at(-1).y),route: path.getAttribute('d'),t,tipError:Math.hypot(point.x-hm.e,point.y-hm.f),visible:getComputedStyle(head).visibility,sourceIndex:preview.nodes.indexOf(fromNode),targetIndex:preview.nodes.indexOf(toNode),
-        portError:Math.hypot(source.x-start.x,source.y-start.y),angle:Math.atan2(hm.b,hm.a)*180/Math.PI,
+        portError:Number(Math.hypot(source.x-start.x,source.y-start.y).toFixed(4)),angle:Math.atan2(hm.b,hm.a)*180/Math.PI,
         endAngle:Math.atan2(route.at(-1).y-route.at(-2).y,route.at(-1).x-route.at(-2).x)*180/Math.PI};
     });
     const svgRect=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal;
@@ -171,8 +171,8 @@ for(const width of [1440,390])for(const theme of ['light','dark']) {
       }
     }
     const complete=await drawing(article);
-    await seek(article,.625);const reverse=await drawing(article);
-    await seek(article,0);await seek(article,.625);const forward=await drawing(article);
+    await seek(article,.625,1);const reverse=await drawing(article);
+    await seek(article,0,1);await seek(article,.625,1);const forward=await drawing(article);
     expect(reverse).toEqual(forward);
     await seek(article,1);expect(await drawing(article)).toEqual(complete);
     await page.screenshot({path:`.impeccable/review/assembly-${width}-${theme}-${i+1}.png`});
@@ -211,8 +211,66 @@ for(const width of [1440,390])test(`arrowheads follow predefined route bends bet
    expect(final.nodes[n].width).toBeCloseTo(early.nodes[n].width,2);
    expect(final.nodes[n].height).toBeCloseTo(early.nodes[n].height,2);
   }
-  await seek(article,earlyProgress);expect(await drawing(article)).toEqual(early);
+  await seek(article,earlyProgress,1);expect(await drawing(article)).toEqual(final);
  }
+});
+
+for(const width of [1440,390])for(const theme of ['light','dark'])test(`completed tracks collapse without moving the view at ${width} ${theme}`,async({page})=>{
+ await page.setViewportSize({width,height:width===390?844:900});
+ await page.addInitScript(theme=>localStorage.setItem('theme',theme),theme);
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+ page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
+ await ready(page);
+ for(const article of await articles(page).all()) {
+  await seek(article,.79);
+  const before=await article.evaluate(el=>({height:el.getBoundingClientRect().height,stage:el.querySelector('[data-assembly-stage]')!.getBoundingClientRect().toJSON(),page:document.documentElement.scrollHeight}));
+  await seek(article,.805);
+  await expect(article).toHaveAttribute('data-assembly-completed','true');
+  const after=await article.evaluate(el=>({height:el.getBoundingClientRect().height,stage:el.querySelector('[data-assembly-stage]')!.getBoundingClientRect().toJSON(),page:document.documentElement.scrollHeight}));
+  expect(after.height).toBeLessThanOrEqual(after.stage.height+1);
+  expect(after.height).toBeLessThan(before.height/2);
+  expect(Math.abs(after.stage.y-before.stage.y)).toBeLessThanOrEqual(1);
+  expect(after.stage.height).toBe(before.stage.height);
+  expect(before.page-after.page).toBeCloseTo(before.height-after.height,0);
+  await page.mouse.wheel(0,200);await page.waitForTimeout(200);
+  expect((await article.locator('[data-assembly-stage]').boundingBox())!.y).toBeLessThan(after.stage.y-100);
+  await seek(article,0,1);
+  await expect(article).toHaveAttribute('data-assembly-flow','');
+  const kind=width===390?'mobile':'desktop';
+  await expect.poll(()=>article.locator(`.assembly-${kind} [data-assembly-packet]`).evaluateAll(paths=>paths.every(path=>path.getAnimations()[0]?.playState==='running'))).toBe(true);
+ }
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect(errors).toEqual([]);
+});
+
+test('completion survives responsive layouts and lifecycle changes until page reload',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await ready(page);
+ const article=articles(page).first();
+ await seek(article,.5);await seek(article,.805);
+ await seek(article,.1,1);
+ for(const width of [390,1440]) {
+  await page.setViewportSize({width,height:width===390?844:900});
+  await seek(article,.1,1);
+  const state=await drawing(article);
+  expect(state.nodes.every(node=>node.opacity===1&&node.x===node.config.x&&node.y===node.config.y)).toBe(true);
+  expect(state.wires.every(wire=>wire.t===1)).toBe(true);
+  await expect(article).toHaveAttribute('data-assembly-flow','');
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await expect(article).toHaveAttribute('data-assembly-fallback','reduced-motion');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await expect(article).toHaveAttribute('data-assembly-enhanced','true');
+ await seek(article,.1,1);
+ await page.evaluate(()=>{
+  window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
+  document.fonts.dispatchEvent(new Event('loadingdone'));
+ });
+ await seek(article,0,1);
+ await page.reload();
+ await expect.poll(async()=>Number(await article.getAttribute('data-assembly-progress'))).toBeLessThan(.003);
+ await expect(article).not.toHaveAttribute('data-assembly-completed');
+ await seek(article,.5);
+ expect((await drawing(article)).nodes.some(node=>node.opacity<1)).toBe(true);
 });
 
 test('handoff, rapid destination jumps, keyboard completion and matching catalog anchors in both views',async({page})=>{
@@ -221,8 +279,8 @@ test('handoff, rapid destination jumps, keyboard completion and matching catalog
  await seek(first,.2);await seek(last,.9);
  await expect(first).toHaveAttribute('data-assembly-progress','1.000000');
  const firstBox=await first.locator('[data-assembly-stage]').boundingBox();expect(firstBox!.y+firstBox!.height).toBeLessThan(0);
- await seek(first,.2);
- await expect(first.locator('[data-assembly-cta]')).toHaveAttribute('tabindex','-1');
+ await seek(first,.2,1);
+ await expect(first.locator('[data-assembly-cta]')).not.toHaveAttribute('tabindex','-1');
  await first.locator('.assembly-completion-link').focus();await page.keyboard.press('Enter');
  await expect(first.locator('.assembly-end')).toBeFocused();await expect(first).toHaveAttribute('data-assembly-phase','complete');
  await page.keyboard.press('Tab');
@@ -254,7 +312,7 @@ test('wheel, PageDown, End and real CDP touch gestures drive assembly without in
 });
 
 test('restored scroll, direct work load, Back/Forward, pageshow, fonts, theme and visibility',async({page})=>{
- await ready(page);const a=articles(page).nth(1);await seek(a,.625);
+ await ready(page);const a=articles(page).first();await seek(a,.625);
  const before=await drawing(a);await page.reload();await expect.poll(async()=>Number(await a.getAttribute('data-assembly-progress'))).toBeCloseTo(before.p,2);
  await page.goto('/projects');await page.goBack();await expect.poll(async()=>Number(await a.getAttribute('data-assembly-progress'))).toBeCloseTo(before.p,2);
  await page.goForward();await expect(page).toHaveURL(/\/projects/);await page.goBack();
@@ -346,8 +404,9 @@ for(const width of [1440,390])test(`completed schematics loop directed data pack
   await page.waitForTimeout(150);expect(await packets.evaluateAll(paths=>paths.map(path=>path.getAnimations()[0].currentTime))).toEqual(paused);
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
   await expect.poll(()=>packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='running'))).toBe(true);
-  await seek(article,.6);await expect(article).not.toHaveAttribute('data-assembly-flow');
-  expect(await packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='paused'&&path.getAnimations()[0].currentTime===0))).toBe(true);
+  await seek(article,.6,1);await expect(article).toHaveAttribute('data-assembly-flow','');
+  expect(await drawing(article)).toEqual(geometry);
+  expect(await packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='running'))).toBe(true);
   await seek(article,.9);await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
   await expect.poll(()=>packets.evaluateAll(paths=>paths.every(path=>path.getAnimations()[0].playState==='paused'))).toBe(true);
  }

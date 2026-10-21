@@ -2196,6 +2196,12 @@ textarea[aria-invalid='true']:focus {
   padding: 20px 0 12px;
 }
 [data-assembly-enhanced] .assembly-diagram { aspect-ratio: auto; }
+/* Completed studies keep their final drawing size and return to ordinary flow. */
+.project-assembly[data-assembly-enhanced][data-assembly-completed] { height: auto; }
+[data-assembly-enhanced][data-assembly-completed] .assembly-stage {
+  position: relative;
+  top: 0;
+}
 .catalog-item[id] { scroll-margin-top: 28px; }
 @media (max-width: 700px) {
   .assembly-stage { gap: 16px; padding-block: 28px; }

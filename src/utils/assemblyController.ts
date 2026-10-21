@@ -5,7 +5,7 @@ import { cacheRoute, clamp, createAssemblyTimeline, intervalProgress, nodePositi
 type Wire = { path:SVGPathElement; head:SVGPathElement; targetIndex:number; authored:ProjectPreview['edges'][number]['desktop']; route:ReturnType<typeof cacheRoute>; label:SVGTextElement|null };
 type Layout = { svg:SVGSVGElement; nodes:SVGGElement[]; wires:Wire[]; packets:SVGPathElement[]; kind:'desktop'|'mobile' };
 type Study = { article:HTMLElement; stage:HTMLElement; cta:HTMLAnchorElement; completion:HTMLElement;
-  visible:boolean; flow:ReturnType<typeof createSchematicFlow>;
+  visible:boolean; completed:boolean; flow:ReturnType<typeof createSchematicFlow>;
   preview:ProjectPreview; timeline:ReturnType<typeof createAssemblyTimeline>; layouts:Layout[]; enabled:boolean; failed:boolean; top:number; distance:number; inset:number; last:number };
 let dispose: (()=>void) | undefined;
 export function initProjectAssemblies() {
@@ -23,6 +23,13 @@ export function initProjectAssemblies() {
     study.flow.sync(complete,study.visible);
   }
 
+  function completionScrollTop(study:Study) {
+    // A completed study has no travel left. Center its final stage for keyboard
+    // navigation instead of using the retired track's completion position.
+    return study.completed
+      ?study.top-Math.max(0,(innerHeight-study.stage.clientHeight)/2)
+      :study.top-study.inset+study.distance*.9;
+  }
   function restore(study:Study, reason:string) {
     study.enabled=false;
     study.article.removeAttribute('data-assembly-enhanced');
@@ -33,6 +40,13 @@ export function initProjectAssemblies() {
     render(study,1,true);
   }
   function render(study:Study,p:number,force=false) {
+    // Completion belongs to this page instance, not scroll position or storage.
+    // Settle both responsive drawings once; later scrolling only runs idle flow.
+    if(study.enabled&&(study.completed||p>=.8)) {
+      force=force||!study.completed;
+      study.completed=true;
+      p=1;
+    }
     if(!force&&Math.abs(study.last-p)<.000001) return;
     study.last=p;
     study.article.dataset.assemblyProgress=p.toFixed(6);
@@ -103,11 +117,11 @@ export function initProjectAssemblies() {
       const timeline=createAssemblyTimeline(preview);
       const order=timeline.wires.map((interval,index)=>({start:interval.start,index})).sort((a,b)=>a.start-b.start).map(item=>item.index);
       const flow=createSchematicFlow(layouts.map(layout=>layout.svg),order);
-      const study:Study={article,preview,timeline,flow,layouts,stage:article.querySelector('[data-assembly-stage]')!,cta:article.querySelector('[data-assembly-cta]')!,completion:article.querySelector('[data-assembly-completion]')!,visible:false,enabled:false,failed:false,top:0,distance:0,inset:0,last:-1};
+      const study:Study={article,preview,timeline,flow,layouts,stage:article.querySelector('[data-assembly-stage]')!,cta:article.querySelector('[data-assembly-cta]')!,completion:article.querySelector('[data-assembly-completion]')!,visible:false,completed:false,enabled:false,failed:false,top:0,distance:0,inset:0,last:-1};
       studies.push(study);
       const finish=()=>{
         if(!study.enabled)return;
-        scrollTo({top:study.top-study.inset+study.distance*.9,behavior:'instant'});
+        scrollTo({top:completionScrollTop(study),behavior:'instant'});
         render(study,.9,true);
         schedule();
       };
@@ -132,6 +146,25 @@ export function initProjectAssemblies() {
       article.dataset.assemblyFallback='initialization';
     }
   }
+  function refreshGeometry() {
+    const geometry=studies.map(study=>({top:study.article.getBoundingClientRect().top+scrollY,height:study.article.getBoundingClientRect().height,stage:study.stage.getBoundingClientRect().height,inset:parseFloat(getComputedStyle(study.stage).top)||0}));
+    studies.forEach((study,i)=>{
+      Object.assign(study,{top:geometry[i].top,distance:geometry[i].height-geometry[i].stage,inset:geometry[i].inset});
+    });
+  }
+  function collapseCompletedTracks() {
+    const completed=studies.filter(study=>study.enabled&&study.completed&&!study.article.hasAttribute('data-assembly-completed'));
+    if(!completed.length)return;
+    const y=scrollY;
+    // Remove the already-travelled portion above the viewport as well as the
+    // unused tail below it. This keeps the pinned drawing (or jump destination)
+    // in the same place when one or several tracks collapse in this frame.
+    const travelled=completed.reduce((total,study)=>total+Math.max(0,Math.min(study.distance,y-(study.top-study.inset))),0);
+    for(const study of completed)study.article.dataset.assemblyCompleted='true';
+    refreshGeometry();
+    scrollTo({top:y-travelled,behavior:'instant'});
+    schedule();
+  }
   function measure() {
     measuring=true;
     // Enable candidates as a batch, then read the resulting layout. Tracks use svh;
@@ -151,17 +184,17 @@ export function initProjectAssemblies() {
       const stage=study.stage.getBoundingClientRect();
       const inset=parseFloat(getComputedStyle(study.stage).top)||0;
       const available=Math.min(innerHeight,visualViewport?.height||innerHeight);
-      return font>=11.95 && study.stage.scrollHeight<=study.stage.clientHeight+1 && stage.height+inset<=available+1 && study.article.offsetHeight>stage.height;
+      return font>=11.95 && study.stage.scrollHeight<=study.stage.clientHeight+1 && stage.height+inset<=available+1 && (study.completed||study.article.offsetHeight>stage.height);
     });
     studies.forEach((study,i)=>{if(study.enabled&&!fits[i])restore(study,'fit');});
     // Read unpinned article geometry after every fit decision has finished reflow.
-    const geometry=studies.map(study=>({top:study.article.getBoundingClientRect().top+scrollY,height:study.article.getBoundingClientRect().height,stage:study.stage.getBoundingClientRect().height,inset:parseFloat(getComputedStyle(study.stage).top)||0}));
-    studies.forEach((study,i)=>{
-      Object.assign(study,{top:geometry[i].top,distance:geometry[i].height-geometry[i].stage,inset:geometry[i].inset,last:-1});
+    refreshGeometry();
+    for(const study of studies) {
+      study.last=-1;
       if(study.enabled) delete study.article.dataset.assemblyFallback;
-    });
+    }
     const focused=studies.find(study=>study.enabled&&(document.activeElement===study.cta||document.activeElement===study.article.querySelector('.assembly-end')));
-    if(focused) scrollTo({top:focused.top-focused.inset+focused.distance*.9,behavior:'instant'});
+    if(focused) scrollTo({top:completionScrollTop(focused),behavior:'instant'});
     measuring=false;
   }
   function update() {
@@ -174,9 +207,10 @@ export function initProjectAssemblies() {
       try {
         // Endpoint reconciliation also handles jumps across multiple articles. Once
         // clamped, distant studies incur no per-node writes on subsequent scrolls.
-        render(study,clamp((y-(study.top-study.inset))/study.distance));
+        render(study,study.completed?1:clamp((y-(study.top-study.inset))/study.distance));
       } catch {study.failed=true;restore(study,'initialization');dirty=true;schedule();}
     }
+    collapseCompletedTracks();
   }
   function schedule() {if(!frame&&!document.hidden)frame=requestAnimationFrame(update);}
   function invalidate() {dirty=true;schedule();}
