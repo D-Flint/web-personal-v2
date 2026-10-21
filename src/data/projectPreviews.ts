@@ -98,7 +98,7 @@ export const projectPreviews: Record<string, ProjectPreview> = {
       edge('plugins-worker','plugins','worker',2,points(350,255,350,220,625,220,625,134),points(249,138,249,147,215,147,215,156)),
       edge('worker-jobs','worker','jobs',2,points(685,87,750,87),points(165,210,165,228)),
       edge('jobs-sqlite','jobs','sqlite',3,points(840,134,840,255),points(125,282,125,291,81,291,81,300)),
-      edge('jobs-audit','jobs','audit',3,points(750,112,715,112,715,305,685,305),points(205,282,205,291,249,291,249,300)),
+      edge('jobs-audit','jobs','audit',3,points(795,134,795,195,715,195,715,305,685,305),points(205,282,205,291,249,291,249,300)),
     ],
   },
 };
