@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('navigation, all records, resume and external link truth', async ({ page, request }) => {
+test('navigation, all records and external link truth', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Software');
   await page.getByRole('link', { name: 'All projects', exact: true }).click();
@@ -14,9 +14,17 @@ test('navigation, all records, resume and external link truth', async ({ page, r
   await page.getByRole('button', { name: 'View AI Models Finder details' }).click();
   await expect(page.locator('#detail-live')).toBeHidden();
   await expect(page.locator('#detail-unpublished')).toBeVisible();
-  const pdf = await request.get('/resume.pdf');
-  expect(pdf.status()).toBe(200);
-  expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+});
+
+test('resume standby and legacy PDF redirect', async ({ page, request }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Resume', exact: true }).click();
+  await expect(page).toHaveURL(/\/resume$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Resume onstandby.');
+  await expect(page.locator('main')).toContainText('My resume is temporarily unavailable.');
+  const legacyResume = await request.get('/resume.pdf', { maxRedirects: 0 });
+  expect(legacyResume.status()).toBe(302);
+  expect(legacyResume.headers().location).toBe('/resume');
 });
 
 test('combined search/category/all-tags, empty recovery and persisted list', async ({ page }) => {

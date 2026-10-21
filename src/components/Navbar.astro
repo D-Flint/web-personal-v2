@@ -26,8 +26,8 @@ const path = Astro.url.pathname;
       </a>
       <a href="/#about">About</a>
       <a href="/#contact">Contact</a>
-      <a class="resume-link" href="/resume.pdf" target="_blank" rel="noopener">
-        Resume<span class="sr-only"> (PDF, opens a new tab)</span>
+      <a class="resume-link" href="/resume" aria-current={path === '/resume' ? 'page' : undefined}>
+        Resume
       </a>
     </nav>
     <div class="theme-controls" hidden>

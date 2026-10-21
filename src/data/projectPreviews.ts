@@ -55,8 +55,8 @@ export const projectPreviews: Record<string, ProjectPreview> = {
       edge('browser-projects','browser','projects',1,points(360,148,360,85,510,85),points(110,156,110,177,81,177,81,198)),
       edge('project-controls','projects','interactions',1,points(700,85,800,85),points(81,260,81,302)),
       edge('browser-assistant','browser','assistant',2,points(360,242,360,305,510,305),points(220,156,220,177,249,177,249,198)),
-      { ...edge('api-request','browser','api',3,points(470,195,875,195,875,258),points(251,125,327,125,327,280,284,280,284,302), 'Request'), labelAt: { desktop: { x:819, y:183 }, mobile: { x:276, y:274 } } },
-      { ...edge('api-response','api','assistant',3,points(800,305,700,305),points(220,302,220,260), 'Response'), labelAt: { desktop: { x:719, y:291 }, mobile: { x:174, y:283 } } },
+      { ...edge('api-request','browser','api',3,points(470,195,958,195,958,305,950,305),points(251,125,327,125,327,329,318,329), 'Request'), labelAt: { desktop: { x:819, y:183 }, mobile: { x:276, y:286 } } },
+      { ...edge('api-response','api','assistant',3,points(800,305,700,305),points(249,302,249,260), 'Response'), labelAt: { desktop: { x:719, y:291 }, mobile: { x:198, y:283 } } },
     ],
   },
   '04': {
