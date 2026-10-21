@@ -33,11 +33,11 @@ test('automatic cycle, uninterrupted hover, resize, suspension and reduced motio
   await page.clock.runFor(4500);
   await expect(page.locator('.hero-animation-controls')).toHaveCount(0);
   await page.setViewportSize({width:320,height:844});await page.clock.runFor(50);
-  await canvas.hover();await page.clock.runFor(7400);
+  await canvas.hover();await page.clock.runFor(9300);
   await expect(canvas).toHaveAttribute('data-word','DRAFT');await expect(canvas).toHaveAttribute('data-phase','hold');
   const rect=await canvas.boundingBox();
   for(let i=0;i<4;i++){await page.mouse.move(rect!.x+rect!.width*(.3+i*.1),rect!.y+rect!.height/2);await page.clock.runFor(500);}
-  await page.mouse.move(0,0);await page.clock.runFor(1100);
+  await page.mouse.move(0,0);await page.clock.runFor(3100);
   await expect(canvas).toHaveAttribute('data-phase','scatter');
   await page.clock.runFor(4400);await expect(canvas).toHaveAttribute('data-word','TEMPER');
   await page.locator('#contact').scrollIntoViewIfNeeded();await page.clock.runFor(100);await expect(canvas).toHaveAttribute('data-running','false');
@@ -63,8 +63,9 @@ test('large DRAFT retains every sampled grid cell without cap holes',async({page
   });
   await page.goto('/');const canvas=page.locator('#hero-particles');await expect(canvas).toHaveAttribute('data-ready','true');
   await page.clock.runFor(3100);
-  for(let i=0;i<2;i++){await page.clock.fastForward(3100);await page.clock.runFor(4500);}
+  for(let i=0;i<25 && await canvas.getAttribute('data-word')!=='DRAFT';i++) await page.clock.runFor(1000);
   await expect(canvas).toHaveAttribute('data-word','DRAFT');
+  await page.clock.runFor(3100);
   const missing=await page.evaluate(()=>{
     const {masks,points}=(window as any).__heroInk,mask=masks[masks.length-3],gap=Math.round(points[0].size/.68);
     const occupied=new Set(points.map((p:any)=>`${Math.round(p.x)},${Math.round(p.y)}`));let missing=0;

@@ -132,7 +132,7 @@
           p.x = clamp(p.x + p.vx * dt, width);
           p.y = clamp(p.y + p.vy * dt, height);
         });
-        if (hold >= 3000) startWordTransition((word + 1) % words.length, true);
+        if (hold >= 5000) startWordTransition((word + 1) % words.length, true);
       }
       renderWord();
       if (!frame) frame = requestAnimationFrame(animateWordFrame);
