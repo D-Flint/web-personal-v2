@@ -22,7 +22,7 @@
 <!-- Keep the inner flex wrapper: Astro 7 script preservation and chat overflow depend on it. -->
 <dialog id="neko-chat" class="assistant-dialog" aria-labelledby="assistant-title">
   <div class="flex h-full min-h-0 flex-col overflow-hidden assistant-shell">
-    <!-- Header is fixed within the flex shell; the conversation is the scrolling region. -->
+    <!-- Header and composer stay visible while conversation controls scroll together. -->
     <div class="assistant-header">
       <div>
         <h2 id="assistant-title">Portfolio assistant</h2>
@@ -40,26 +40,28 @@
         </svg>
       </button>
     </div>
-    <div
-      id="chat-log"
-      class="chat-log"
-      role="log"
-      aria-label="Conversation"
-      aria-live="polite"
-      aria-relevant="additions text"
-    >
-      <div class="chat-message">
-        <strong>Assistant</strong>What would you like to know about Hoeurb’s projects, skills, or
-        background?
+    <div class="assistant-content" id="assistant-content">
+      <div
+        id="chat-log"
+        class="chat-log"
+        role="log"
+        aria-label="Conversation"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
+        <div class="chat-message">
+          <strong>Assistant</strong>What would you like to know about Hoeurb’s projects, skills, or
+          background?
+        </div>
       </div>
+      <div class="chat-prompts">
+        <button data-prompt="Tell me about your AI assistant project.">AI assistant</button>
+        <button data-prompt="What are your technical skills?"> Technical skills </button>
+        <button data-prompt="How can I contact Hoeurb?">Contact</button>
+      </div>
+      <p class="chat-status" id="chat-status" role="status"></p>
+      <button class="button secondary chat-retry" id="chat-retry" hidden> Retry message </button>
     </div>
-    <div class="chat-prompts">
-      <button data-prompt="Tell me about your AI assistant project.">AI assistant</button>
-      <button data-prompt="What are your technical skills?"> Technical skills </button>
-      <button data-prompt="How can I contact Hoeurb?">Contact</button>
-    </div>
-    <p class="chat-status" id="chat-status" role="status"></p>
-    <button class="button secondary chat-retry" id="chat-retry" hidden> Retry message </button>
     <form class="chat-form" id="chat-form">
       <label for="chat-input">
         <span>Your question · up to 250 characters</span>
@@ -80,12 +82,14 @@
   const dialog = document.querySelector<HTMLDialogElement>('#neko-chat')!;
   const input = document.querySelector<HTMLTextAreaElement>('#chat-input')!;
   const log = document.querySelector<HTMLElement>('#chat-log')!;
+  const scrollRegion = document.querySelector<HTMLElement>('#assistant-content')!;
   const status = document.querySelector<HTMLElement>('#chat-status')!;
   const sendButton = document.querySelector<HTMLButtonElement>('#chat-send')!;
   const retryButton = document.querySelector<HTMLButtonElement>('#chat-retry')!;
   const resetButton = document.querySelector<HTMLButtonElement>('#chat-reset')!;
   const launcher = document.querySelector<HTMLButtonElement>('#assistant-open')!;
   const promptButtons = document.querySelectorAll<HTMLButtonElement>('[data-prompt]');
+  const compactViewportHeight = 440;
   let conversationHistory: ChatMessage[] = [];
   let failedQuestion = '';
 
@@ -95,6 +99,7 @@
     const viewport = window.visualViewport;
     if (!viewport) return;
 
+    dialog.toggleAttribute('data-compact', viewport.height < compactViewportHeight);
     dialog.style.maxHeight = `${viewport.height - 24}px`;
     dialog.style.bottom = `${Math.max(12, window.innerHeight - viewport.height - viewport.offsetTop + 12)}px`;
   }
@@ -106,7 +111,7 @@
     dialog.show();
     launcher.setAttribute('aria-expanded', 'true');
     fitPanelToViewport();
-    input.focus();
+    input.focus({ preventScroll: true });
   });
   document.querySelector('#assistant-close')!.addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
@@ -134,7 +139,7 @@
     content.textContent = text;
     item.append(label, content);
     log.append(item);
-    log.scrollTop = log.scrollHeight;
+    scrollRegion.scrollTop = scrollRegion.scrollHeight;
     return { item, content };
   }
 
@@ -163,7 +168,7 @@
       if (done) break;
       reply += decoder.decode(value, { stream: true });
       content.textContent = reply;
-      log.scrollTop = log.scrollHeight;
+      scrollRegion.scrollTop = scrollRegion.scrollHeight;
     }
     reply += decoder.decode();
     content.textContent = reply;
@@ -228,7 +233,8 @@
     } finally {
       clearTimeout(timeout);
       setRequestPending(false);
-      if (dialog.open) input.focus();
+      scrollRegion.scrollTop = scrollRegion.scrollHeight;
+      if (dialog.open) input.focus({ preventScroll: true });
     }
   }
 
@@ -256,6 +262,6 @@
     appendMessage('assistant', 'Conversation cleared. What would you like to know?');
     status.textContent = '';
     input.value = '';
-    input.focus();
+    input.focus({ preventScroll: true });
   });
 </script>

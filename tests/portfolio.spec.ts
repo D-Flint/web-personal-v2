@@ -266,10 +266,10 @@ test('assistant keeps page scrolling available in both themes and viewport sizes
       await page.locator('#chat-send').click();
       await expect(page.locator('#chat-status')).toHaveText('Response complete.');
       const pageScroll = await page.evaluate(() => scrollY);
-      const chatScroll = await page.locator('#chat-log').evaluate(el => el.scrollTop);
-      await page.locator('#chat-log').hover();
+      const chatScroll = await page.locator('#assistant-content').evaluate(el => el.scrollTop);
+      await page.locator('#assistant-content').hover();
       await page.mouse.wheel(0, -150);
-      await expect.poll(() => page.locator('#chat-log').evaluate(el => el.scrollTop)).toBeLessThan(chatScroll);
+      await expect.poll(() => page.locator('#assistant-content').evaluate(el => el.scrollTop)).toBeLessThan(chatScroll);
       expect(await page.evaluate(() => scrollY)).toBe(pageScroll);
       await page.screenshot({path: `/tmp/chat-scroll-${width}-${theme}.png`});
       await page.keyboard.press('Escape');

@@ -841,7 +841,7 @@ nav a[aria-current='page'] {
   z-index: 30;
   box-shadow: 0 6px 20px var(--shadow);
 }
-/* 8. Non-modal chat panel. Its shell keeps history scrollable above the composer. */
+/* 8. Non-modal chat panel. Conversation controls scroll together above the composer. */
 .assistant-dialog {
   z-index: 50;
   position: fixed;
@@ -865,6 +865,20 @@ nav a[aria-current='page'] {
   min-height: 0;
   overflow: hidden;
 }
+.assistant-shell > :not(.assistant-content) {
+  flex-shrink: 0;
+}
+.assistant-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+.assistant-content > * {
+  flex-shrink: 0;
+}
 .assistant-header {
   padding: 18px 18px 14px;
   display: flex;
@@ -883,10 +897,7 @@ nav a[aria-current='page'] {
   color: var(--muted);
 }
 .chat-log {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
+  flex: 1 0 auto;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -980,6 +991,19 @@ nav a[aria-current='page'] {
   margin: 0 18px 14px;
   align-self: start;
   padding: 0;
+}
+/* Short visual viewports need more room for messages above the keyboard. */
+.assistant-dialog[data-compact] .assistant-header {
+  padding: 10px 12px;
+}
+.assistant-dialog[data-compact] .chat-form {
+  padding: 8px 12px;
+}
+.assistant-dialog[data-compact] .chat-form textarea {
+  height: 48px;
+}
+.assistant-dialog[data-compact] .chat-reset {
+  margin: 0 12px 8px;
 }
 .sr-only {
   position: absolute;
@@ -1645,6 +1669,10 @@ body:has(dialog:modal) {
   }
   .chat-prompts button {
     overflow-wrap: anywhere;
+  }
+  .chat-form textarea {
+    /* Keep iOS from zooming the visual viewport when the composer receives focus. */
+    font-size: max(16px, 1rem);
   }
 }
 
