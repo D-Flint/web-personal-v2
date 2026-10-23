@@ -199,7 +199,7 @@ const tags = [...new Set(projects.flatMap((project) => project.tags))].sort();
     });
 
     // 4. Restore layout preference when storage is available; grid remains the fallback.
-    const views = document.querySelectorAll<HTMLButtonElement>('[data-view]');
+    const views = document.querySelectorAll<HTMLButtonElement>('.view-controls button[data-view]');
     // Normalize persisted preferences before applying layout and pressed states.
     function setCatalogView(view: string) {
       catalog.dataset.view = view === 'list' ? 'list' : 'grid';

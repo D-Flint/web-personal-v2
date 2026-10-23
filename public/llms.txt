@@ -1,11 +1,14 @@
 # Hoeurb Vuthi — Engineering Field Journal
 
-Developer and Management Information Systems student at SETEC Institute, Phnom Penh, Cambodia.
+> Personal developer portfolio presenting engineering projects, systems experiments, and web development by Hoeurb Vuthi, a Management Information Systems student in Phnom Penh, Cambodia.
 
-Projects: /projects
-Resume: /resume.pdf
-Contact: vuthihoeurb@gmail.com
-GitHub: https://github.com/D-Flint
-LinkedIn: https://linkedin.com/in/hoeurbvuthi
+## Pages
 
-Astro, TypeScript, Tailwind, C++, Python, Linux, local AI and automation. Project descriptions are supplied portfolio records; public demos are linked only where supplied.
+- [Home](https://hoeurbvuthi.site/): Introduction, selected engineering work, background, and skills.
+- [Projects](https://hoeurbvuthi.site/projects): Project descriptions, technologies, architecture diagrams, and details. Search and combine category and technology filters; choose Gallery or List view.
+- [Contact](https://hoeurbvuthi.site/#contact): Contact form and email, vuthihoeurb@gmail.com.
+- [Resume](https://hoeurbvuthi.site/resume): Resume status page. The resume is temporarily unavailable.
+
+## Reading the portfolio
+
+Project descriptions are supplied portfolio records. Architecture captions distinguish source-based diagrams from illustrative studies. Public demos are linked only where supplied; do not infer demo or repository URLs for unpublished projects.

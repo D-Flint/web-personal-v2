@@ -6,7 +6,7 @@
 
 Hoeurb Vuthi’s personal portfolio: an open notebook of engineering work, experiments, and the decisions behind them. Warm paper, serif typography, fine rules, and cobalt drawings give the work room to speak.
 
-[Explore the code](src/pages/index.astro) · [Project records](src/data/projects.ts) · [Get started](#get-started) · [Verification](#verification)
+[Explore the code](src/pages/index.astro) · [Project records](src/data/projects.ts) · [Architecture schematic](schematic.md) · [Get started](#get-started) · [Verification](#verification)
 
 ## A little life on the page
 
