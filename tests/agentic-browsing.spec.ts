@@ -18,6 +18,35 @@ test('agent discovery provides working page links and truthful resume status', a
 });
 
 for (const width of [1440, 390]) for (const theme of ['light', 'dark']) {
+  test(`homepage completion targets expose readable text at ${width} in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await page.addInitScript(theme => localStorage.setItem('theme', theme), theme);
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto('/');
+    const studies = page.locator('[data-project-assembly]');
+    await expect(studies).toHaveCount(3);
+    for (const study of await studies.all()) {
+      const title = await study.locator('.assembly-introduction h3').innerText();
+      const target = study.locator('.assembly-end');
+      await expect(target).not.toHaveAttribute('aria-label');
+      expect(await target.ariaSnapshot()).toContain(`${title} complete diagram`);
+    }
+
+    const first = studies.first();
+    await expect(first).toHaveAttribute('data-assembly-enhanced', 'true');
+    await first.locator('.assembly-completion-link').focus();
+    await page.keyboard.press('Enter');
+    await expect(first.locator('.assembly-end')).toBeFocused();
+    await expect(first).toHaveAttribute('data-assembly-phase', 'complete');
+    await page.keyboard.press('Tab');
+    await expect(first.locator('[data-assembly-cta]')).toBeFocused();
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    expect(errors).toEqual([]);
+    await page.screenshot({ path: `.impeccable/review/agentic/home-complete-${width}-${theme}.png` });
+  });
+
   test(`catalog remains a region through view changes at ${width} in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
     await page.addInitScript(theme => localStorage.setItem('theme', theme), theme);

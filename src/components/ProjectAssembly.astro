@@ -19,7 +19,9 @@ const { project, preview } = Astro.props as { project: Project; preview?: Projec
       </a>
     </div>
   </div>
-  <span class="assembly-end" id={`assembly-complete-${project.num}`} tabindex="-1" aria-label={`${project.title} complete diagram`}></span>
+  <span class="assembly-end" id={`assembly-complete-${project.num}`} tabindex="-1">
+    <span class="sr-only">{project.title} complete diagram</span>
+  </span>
   {preview && <script type="application/json" data-assembly-config set:html={JSON.stringify(preview).replace(/</g,'\\u003c')} />}
 </article>
 <script>
